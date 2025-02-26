@@ -410,6 +410,7 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
         )  # Create a new array for the simplified vegetation categories
         dx = (xlat[0, 0] - xlat[1, 0]) * 111
         radius = dx * 10
+        # TODO: read pmodel and reco migli here and so on
 
         print(nc_f1)
         # Initialize lists to store data for the current timestep

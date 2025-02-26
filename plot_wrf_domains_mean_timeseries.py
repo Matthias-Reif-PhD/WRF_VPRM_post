@@ -15,7 +15,7 @@ start_date = "2012-07-02 00:00:00"
 end_date = "2012-07-30 00:00:00"
 STD_TOPO = 100
 columns = ["GPP_pmodel", "GPP", "RECO", "NEE", "T2"]
-subdaily = "_subdailyC3"  # "_subdailyC3" or "" to use subdaily GPP
+subdaily = "_subdailyC3"  # "_subdailyC3" or ""
 
 # Save to CSV
 merged_df_gt = pd.read_csv(

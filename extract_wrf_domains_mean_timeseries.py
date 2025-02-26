@@ -111,7 +111,7 @@ subdaily = "_subdailyC3"  # "_subdailyC3" or "" to use subdaily GPP
 #######################################################################################
 # load CAMS data
 CAMS_path = (
-    "/scratch/c7071034/DATA/CAMS/ghg-reanalysis_surface_2012-07-01_2012-07-31.nc"
+    "/scratch/c7071034/DATA/CAMS/ghg-reanalysis_surface_2012-07-01_2012-08-01.nc"
 )
 
 CAMS_data = nc.Dataset(CAMS_path)
