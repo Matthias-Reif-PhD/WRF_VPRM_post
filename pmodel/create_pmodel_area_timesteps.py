@@ -391,12 +391,12 @@ for wrf_path in wrf_paths:
 
     t = 0
     for file in files[1:]:
-        subdailyC3_gpp = Reco_optimized[t, :, :]
+        Reco_opt_t = Reco_optimized[t, :, :]
         date_time = file.split("_")[2] + "_" + file.split("_")[3]
         reco_path_out = (
             f"{migli_path}/reco_migliavacca_subdailyC3_{wrf_path_dx_str}_{date_time}.nc"
         )
-        xr.DataArray(subdailyC3_gpp, name="RECO_Migli").to_netcdf(
+        xr.DataArray(Reco_opt_t, name="RECO_Migli").to_netcdf(
             reco_path_out, format="NETCDF4_CLASSIC"
         )
         t += 1

@@ -110,6 +110,9 @@ def extract_datetime_from_filename(filename):
 
 def exctract_timeseries(wrf_path, start_date, end_date, method):
 
+    gpp_pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
+    migli_path = "/scratch/c7071034/DATA/RECO_Migli"
+    wrf_path_dx_str = wrf_path.split("_")[-1]
     output_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
     start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
     end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
@@ -385,9 +388,11 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
 
     # Initialize an empty DataFrame with time as the index and locations as columns
     columns = (
-        [f"{location['name']}_GEE" for location in locations]
-        + [f"{location['name']}_RES" for location in locations]
-        + [f"{location['name']}_T2" for location in locations]
+        [f"{location['name']}_GPP_WRF" for location in locations]
+        + [f"{location['name']}_RECO_WRF" for location in locations]
+        + [f"{location['name']}_T2_WRF" for location in locations]
+        + [f"{location['name']}_GPP_Pmodel" for location in locations]
+        + [f"{location['name']}_RECO_Migli" for location in locations]
     )
 
     df_out = pd.DataFrame(columns=columns)
@@ -400,6 +405,10 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
     # Process each WRF file (representing one timestep)
     for nc_f1 in file_list:
         nc_fid1 = nc.Dataset(nc_f1, "r")
+        wrf_file = nc_f1.split("/")[-1]
+        date_time = wrf_file.split("_")[2] + "_" + wrf_file.split("_")[3]
+        file_end = wrf_path_dx_str + "_" + date_time
+        print(f"Processing {file_end}")
         xlat = nc_fid1.variables["XLAT"][0]  # Assuming the first time slice
         xlon = nc_fid1.variables["XLONG"][0]
         WRF_T2 = nc_fid1.variables["T2"][0]
@@ -410,9 +419,26 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
         )  # Create a new array for the simplified vegetation categories
         dx = (xlat[0, 0] - xlat[1, 0]) * 111
         radius = dx * 10
-        # TODO: read pmodel and reco migli here and so on
 
-        print(nc_f1)
+        # find file in migli_path which ends with date_time
+        reco_migli_file = [
+            f
+            for f in sorted(glob.glob(os.path.join(migli_path, "reco_migli*")))
+            if file_end in f
+        ][0]
+        reco_migli = xr.open_dataset(reco_migli_file)
+        reco_migli = reco_migli["RECO_Migli"].values
+        # find file in gpp which ends with date_time
+        gpp_pmodel_file = [
+            f
+            for f in sorted(
+                glob.glob(os.path.join(gpp_pmodel_path, "gpp_pmodel_subdailyC3_*"))
+            )
+            if file_end in f
+        ][0]
+        gpp_pmodel = xr.open_dataset(gpp_pmodel_file)
+        gpp_pmodel = gpp_pmodel["GPP_Pmodel"].values
+
         # Initialize lists to store data for the current timestep
         data_row = {col: None for col in df_out.columns}  # Map columns to values
 
@@ -427,11 +453,15 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
                 gee = get_int_var(lat_target, lon_target, xlat, xlon, WRF_gee) / 3600
                 res = get_int_var(lat_target, lon_target, xlat, xlon, WRF_res) / 3600
                 t2 = get_int_var(lat_target, lon_target, xlat, xlon, WRF_T2)
+                gpp_p = get_int_var(lat_target, lon_target, xlat, xlon, gpp_pmodel)
+                reco_m = get_int_var(lat_target, lon_target, xlat, xlon, reco_migli)
 
                 # Assign values to their respective columns
-                data_row[f"{location['name']}_GEE"] = gee
-                data_row[f"{location['name']}_RES"] = res
-                data_row[f"{location['name']}_T2"] = t2
+                data_row[f"{location['name']}_GPP_WRF"] = gee
+                data_row[f"{location['name']}_RECO_WRF"] = res
+                data_row[f"{location['name']}_T2_WRF"] = t2
+                data_row[f"{location['name']}_GPP_Pmodel"] = gpp_p
+                data_row[f"{location['name']}_RECO_Migli"] = reco_m
             elif method == "NN":
                 # Get nearest neighbour of GEE, RES, and T2 for the current location and append to the row
 
@@ -457,13 +487,21 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
                         break
 
                 # Assign values to their respective columns
-                data_row[f"{location['name']}_GEE"] = (
+                data_row[f"{location['name']}_GPP_WRF"] = (
                     WRF_gee[grid_idx[0], grid_idx[1]] / 3600
                 )
-                data_row[f"{location['name']}_RES"] = (
+                data_row[f"{location['name']}_RECO_WRF"] = (
                     WRF_res[grid_idx[0], grid_idx[1]] / 3600
                 )
-                data_row[f"{location['name']}_T2"] = WRF_T2[grid_idx[0], grid_idx[1]]
+                data_row[f"{location['name']}_T2_WRF"] = WRF_T2[
+                    grid_idx[0], grid_idx[1]
+                ]
+                data_row[f"{location['name']}_GPP_Pmodel"] = gpp_pmodel[
+                    grid_idx[0], grid_idx[1]
+                ]
+                data_row[f"{location['name']}_RECO_Migli"] = reco_migli[
+                    grid_idx[0], grid_idx[1]
+                ]
 
             elif method == "NNhgt":
                 # Get nearest neighbour of GEE, RES, and T2 for the current location and append to the row
@@ -490,13 +528,21 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
                         break
 
                 # Assign values to their respective columns
-                data_row[f"{location['name']}_GEE"] = (
+                data_row[f"{location['name']}_GPP_WRF"] = (
                     WRF_gee[grid_idx[0], grid_idx[1]] / 3600
                 )
-                data_row[f"{location['name']}_RES"] = (
+                data_row[f"{location['name']}_RECO_WRF"] = (
                     WRF_res[grid_idx[0], grid_idx[1]] / 3600
                 )
-                data_row[f"{location['name']}_T2"] = WRF_T2[grid_idx[0], grid_idx[1]]
+                data_row[f"{location['name']}_T2_WRF"] = WRF_T2[
+                    grid_idx[0], grid_idx[1]
+                ]
+                data_row[f"{location['name']}_GPP_Pmodel"] = gpp_pmodel[
+                    grid_idx[0], grid_idx[1]
+                ]
+                data_row[f"{location['name']}_RECO_Migli"] = reco_migli[
+                    grid_idx[0], grid_idx[1]
+                ]
 
         # Append the current timestep data as a new row in the DataFrame
         temp_df_out = pd.DataFrame([data_row])
