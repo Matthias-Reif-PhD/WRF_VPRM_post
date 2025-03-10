@@ -139,7 +139,7 @@ corine_to_vprm = {
 # Load WRF dataset
 # wrf_path = "/home/madse/Downloads/Fluxnet_Data/wrfout_d01_2012-07-01_12:00:00.nc"  # Replace with your file path
 wrf_paths = [
-    #   "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
     "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km",
     "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km",
     "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241227_183215_ALPS_54km",
@@ -149,7 +149,7 @@ modis_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli"
 
 # pmodel parameters
-days_mem = 37
+days_mem = 14
 half_wdth = 90
 window_cent = 13
 gC_to_mumol = 0.0833  # 1 µg C m⁻² s⁻¹ × (1 µmol C / 12.01 µg C) × (1 µmol CO₂ / 1 µmol C) = 0.0833 µmol CO₂ m⁻² s⁻¹

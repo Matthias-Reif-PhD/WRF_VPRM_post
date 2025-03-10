@@ -610,7 +610,7 @@ def main():
         end_date = args.end
         method = args.method
     else:  # to run locally for single cases
-        start_date = "2012-07-01 01:00:00"
+        start_date = "2012-07-15 00:00:00"
         end_date = "2012-07-30 00:00:00"
         wrf_paths = [
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
