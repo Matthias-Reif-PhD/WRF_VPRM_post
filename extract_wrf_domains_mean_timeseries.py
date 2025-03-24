@@ -53,25 +53,7 @@ def proj_CAMS_on_WRF_grid(
     points_fine = np.column_stack((lats_fine.flatten(), lons_fine.flatten()))
     # Perform interpolation
     proj_var = griddata(
-        points_coarse, var_coarse_reversed.flatten(), points_fine, method="nearest"
-    ).reshape(WRF_var_3km.shape)
-
-    return proj_var
-
-
-def proj_on_WRF_grid(
-    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_3km
-):
-    # Corrected meshgrid order
-    lats_coarse_2d, lons_coarse_2d = np.meshgrid(lats_coarse, lons_coarse)
-    # Flatten the coordinates
-    points_coarse = np.column_stack(
-        (lats_coarse_2d.flatten(), lons_coarse_2d.flatten())
-    )
-    points_fine = np.column_stack((lats_fine.flatten(), lons_fine.flatten()))
-    # Perform interpolation
-    proj_var = griddata(
-        points_coarse, var_coarse.flatten(), points_fine, method="nearest"
+        points_coarse, var_coarse_reversed.flatten(), points_fine, method="linear"
     ).reshape(WRF_var_3km.shape)
 
     return proj_var
@@ -88,7 +70,7 @@ def extract_datetime_from_filename(filename):
 
 ################################# INPUT ##############################################
 
-start_date = "2012-07-15 00:00:00"
+start_date = "2012-07-22 00:00:00"
 end_date = "2012-07-30 00:00:00"
 wrf_paths = [
     "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
@@ -100,7 +82,7 @@ wrf_paths = [
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
 gpp_folder = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
-subdaily = "_subdailyC3"  # "_subdailyC3" or "" to use subdaily GPP
+subdaily = ""  # "_subdailyC3" or "" to use subdaily GPP
 
 #######################################################################################
 # load CAMS data

@@ -94,6 +94,7 @@ def extract_datetime_from_filename(filename):
     date_str = base_filename.split("_")[-2] + "_" + base_filename.split("_")[-1]
     return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
+
 # Define the remapping dictionary for CORINE vegetation types
 corine_to_vprm = {
     24: 1,  # Coniferous Forest (Evergreen)
@@ -143,33 +144,41 @@ corine_to_vprm = {
     44: 8,
 }
 labels_vprm_short = [
-    "ENF", "DBF", "MF", "SHB", 
-    "SAV", "CRO", "GRA", "OTH"  # Include "Others"
+    "ENF",
+    "DBF",
+    "MF",
+    "SHB",
+    "SAV",
+    "CRO",
+    "GRA",
+    "OTH",  # Include "Others"
 ]
 
 ################################# INPUT ##############################################
 plot_coeff = True
 plotting_scatter = False
 plotting_scatter_all = False
-start_date = "2012-07-15 00:00:00"
+start_date = "2012-07-22 00:00:00"
 end_date = "2012-07-30 00:00:00"
-PFTs = [1,2,3,6,7]
-T_bin_size = 1
+PFTs = [1, 2, 3, 6, 7]  # 1: ENF, 2: DBF, 3: MF, 6: CRO, 7: GRA
+T_bin_size = 2
 hour_start = 5
 hour_end = 18
 T_ref_min = 0
 T_ref_max = 36
 STD_TOPO = 50
-STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO of both ["lt", "gt"]
-subdaily = "_subdailyC3"  # "_subdailyC3" or ""
-coarse_domains = ["54km", "27km", "9km"] # 
+STD_TOPO_flags = [
+    "gt"
+]  # "lt" lower than or "gt" greater than STD_TOPO of both ["lt", "gt"]
+subdaily = ""  # "_subdailyC3" or ""
+coarse_domains = ["27km"]  # "54km", "27km", "9km"
 
 wrf_files = "wrfout_d01*"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
 
-WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE", "EBIO_RES", "NEE","T2"]
+WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE", "EBIO_RES", "NEE", "T2"]
 units = [
     " [mmol m² s⁻¹]",
     " [mmol m² s⁻¹]",
@@ -200,9 +209,13 @@ for PFT_i in PFTs:
         if coarse_domain == "9km":
             wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km"
         elif coarse_domain == "27km":
-            wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km"
+            wrf_path_i = (
+                "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km"
+            )
         elif coarse_domain == "54km":
-            wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241227_183215_ALPS_54km"
+            wrf_path_i = (
+                "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241227_183215_ALPS_54km"
+            )
 
         wrf_paths = [
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
@@ -224,17 +237,18 @@ for PFT_i in PFTs:
         timestamps = [extract_datetime_from_filename(f) for f in file_list]
         time_index = pd.to_datetime(timestamps)
 
+
         diff_to_3km_4D = []
         T2_coarse_domain_4D = []
 
-    # set standard deviation of topography
-    
+        # set standard deviation of topography
+
         for STD_TOPO_flag in STD_TOPO_flags:
 
             for wrf_file in file_list:
                 ini_switch = True
                 time = extract_datetime_from_filename(wrf_file)
-                # print("processing ", time)
+                print("processing ", time)
                 for (
                     WRF_var,
                     unit,
@@ -262,8 +276,8 @@ for PFT_i in PFTs:
                     hgt_3km = nc_fid3km.variables["HGT"][0, :, :]
                     pft_3km = nc_fid3km.variables["IVGTYP"][0, :, :]
                     pft_3km = np.vectorize(corine_to_vprm.get)(
-                                pft_3km[:, :]
-                            ) # Convert to VPRM PFTs    
+                        pft_3km[:, :]
+                    )  # Convert to VPRM PFTs
                     pft_3km_mask = np.where(pft_3km == PFT_i, True, False)
 
                     land_mask = landmask == 1
@@ -374,10 +388,12 @@ for PFT_i in PFTs:
                         lons_fine,
                         WRF_var_3km,
                     )
-                    pft_coarse_domain = nc_fid_coarse_domain.variables["IVGTYP"][0, :, :]
+                    pft_coarse_domain = nc_fid_coarse_domain.variables["IVGTYP"][
+                        0, :, :
+                    ]
                     pft_coarse_domain = np.vectorize(corine_to_vprm.get)(
-                                pft_coarse_domain[:, :]
-                            ) # Convert to VPRM PFTs  
+                        pft_coarse_domain[:, :]
+                    )  # Convert to VPRM PFTs
                     proj_pft_coarse_domain = proj_on_finer_WRF_grid(
                         lats_coarse_domain,
                         lons_coarse_domain,
@@ -386,7 +402,9 @@ for PFT_i in PFTs:
                         lons_fine,
                         WRF_var_3km,
                     )
-                    pft_coarse_domain_mask = np.where(proj_pft_coarse_domain == PFT_i, True, False)
+                    pft_coarse_domain_mask = np.where(
+                        proj_pft_coarse_domain == PFT_i, True, False
+                    )
 
                     if STD_TOPO_flag == "gt":
                         stdh_mask = proj_stdh_topo_coarse_domain >= STD_TOPO
@@ -404,12 +422,16 @@ for PFT_i in PFTs:
 
                             idx = np.isfinite(WRF_diff) & np.isfinite(hgt_diff)
                             coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
-                            x_poly = np.linspace(hgt_diff[idx].min(), hgt_diff[idx].max())
+                            x_poly = np.linspace(
+                                hgt_diff[idx].min(), hgt_diff[idx].max()
+                            )
                             y_poly = np.polyval(coeff, x_poly)
                             # calculate the R2 and the RMSE value
 
                             r2 = r2_score(WRF_diff[idx], hgt_diff[idx])
-                            rmse = np.sqrt(mean_squared_error(WRF_diff[idx], hgt_diff[idx]))
+                            rmse = np.sqrt(
+                                mean_squared_error(WRF_diff[idx], hgt_diff[idx])
+                            )
 
                             ax.text(
                                 0.05,
@@ -425,7 +447,9 @@ for PFT_i in PFTs:
                                 ),
                             )
 
-                            ax.scatter(hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5)
+                            ax.scatter(
+                                hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5
+                            )
                             ax.plot(
                                 x_poly,
                                 y_poly,
@@ -504,10 +528,16 @@ for PFT_i in PFTs:
                         diff_var_t = masked_diff_var[idx]
                         diff_T2_t = np.array(diff_T2_t)
                         diff_var_t = np.array(diff_var_t)
-                        coeff = np.polyfit(
-                            masked_diff_T2[idx], masked_diff_var[idx], deg=1
+                        # coeff = np.polyfit(
+                        #     masked_diff_T2[idx], masked_diff_var[idx], deg=1
+                        # )
+                        # a, b = coeff
+                        coeff, _, _, _ = np.linalg.lstsq(
+                            masked_diff_T2[idx][:, np.newaxis],
+                            masked_diff_var[idx],
+                            rcond=None,
                         )
-                        a, b = coeff
+                        a = coeff[0]
                         if plotting_scatter_all:
                             fig, ax = plt.subplots()
                             ax.scatter(
@@ -520,26 +550,28 @@ for PFT_i in PFTs:
                                 masked_diff_T2[idx].min(),
                                 masked_diff_T2[idx].max(),
                             )
-                            y_poly = np.polyval(coeff, x_poly)
+                            y_poly = a * x_poly
                             ax.plot(
                                 x_poly,
                                 y_poly,
                                 color="b",
                                 lw=1.5,
                                 linestyle="--",
-                                label=f"y_all = {a:.2f} * x + {b:.2f}",
+                                label=f"y = {a:.2f}x",
                             )
                             ax.legend()
                             ax.xaxis.grid(True, which="major")
                             ax.yaxis.grid(True, which="major")
-                            ax.set_xlabel("T2 diff [°C]")
-                            ax.set_ylabel(f"{name_vars[WRF_var]} diff")
+                            ax.set_xlabel("T2 diff. [°C]")
+                            ax.set_ylabel(
+                                f"{name_vars[WRF_var]} diff. [μmol CO2 m² s⁻¹]"
+                            )
                             formatted_T_ref = "{:.2f}".format(T_ref).replace(".", "_")[
                                 :4
                             ]
 
                             plt.title(
-                                f"WRF coarse_domain - 3km T2 and {name_vars[WRF_var]} correlation at {formatted_T_ref} °C T_ref"
+                                f"PFT {labels_vprm_short[PFT_i-1]} {coarse_domain}-3km T2 and {name_vars[WRF_var]} at T_ref {formatted_T_ref} °C"
                             )
                             figname = (
                                 outfolder
@@ -559,8 +591,10 @@ for PFT_i in PFTs:
             )
             diff_hgt_mean = np.nanmean(diff_hgt)
             diff_hgt_mean_nonproj = np.nanmean(hgt_coarse_domain) - np.nanmean(hgt_3km)
-            pft_points_percent = (mask.sum() / (land_mask * stdh_mask).sum())*100
-            print(f"Percentage of {labels_vprm_short[PFT_i-1]} points from landmask {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}")
+            pft_points_percent = (mask.sum() / (land_mask * stdh_mask).sum()) * 100
+            print(
+                f"Percentage of {labels_vprm_short[PFT_i-1]} points from landmask {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
+            )
             print(
                 f"Mean difference in height between projected {coarse_domain} and 3km is {diff_hgt_mean:.2f} m"
             )
@@ -570,10 +604,10 @@ for PFT_i in PFTs:
 
             if plot_coeff:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
-                ax.set_xlabel("T_ref")
+                ax.set_xlabel(r"$T_{\text{ref}}$ [°C]")
                 ax.set_ylabel("Coefficients [mmol CO2 m² s⁻¹ °C⁻¹]")
                 ax.set_title(
-                    f"Coefficient Values for NEE, GPP, and RECO for {labels_vprm_short[PFT_i-1]} at {coarse_domain} vs. 3km \n Percentage of {labels_vprm_short[PFT_i-1]} points from landmask  {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
+                    f"Coefficient Values for NEE, GPP, and RECO for {labels_vprm_short[PFT_i-1]} at {coarse_domain} vs. 3km"  # \n Percentage of {labels_vprm_short[PFT_i-1]} points from landmask  {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
                 )
                 figname = (
                     outfolder

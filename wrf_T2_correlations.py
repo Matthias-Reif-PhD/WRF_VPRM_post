@@ -97,26 +97,26 @@ def extract_datetime_from_filename(filename):
 
 ################################# INPUT ##############################################
 T_bin_flag = True
-plotting_scatter = True
+plotting_scatter = False
 plotting_scatter_all = False
-start_date = "2012-07-15 00:00:00"
+start_date = "2012-07-22 00:00:00"
 end_date = "2012-07-30 00:00:00"
-T_bin_size = 1
 hour_start = 5
 hour_end = 18
+T_bin_size = 1
 T_ref_min = 0
 T_ref_max = 36
 STD_TOPOs = [50]
-STD_TOPO_flags = ["lt", "gt"]  # "lt" lower than or "gt" greater than STD_TOPO
-subdaily = "_subdailyC3"  # "_subdailyC3" or ""
-coarse_domains = ["54km", "27km", "9km"]
+STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
+subdaily = ""  # "_subdailyC3" or ""
+coarse_domains = ["54km", "27km", "9km"] 
 
 wrf_files = "wrfout_d01*"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
 
-WRF_vars = ["T2", "GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE", "EBIO_RES", "NEE"]
+WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE", "EBIO_RES", "NEE","T2"]
 units = [
     " [mmol m² s⁻¹]",
     " [mmol m² s⁻¹]",
@@ -127,13 +127,13 @@ units = [
     " [K]",
 ]
 name_vars = {
-    "T2": "WRF T2M",
     "GPP_pmodel": "GPP P-Model",
     "RECO_Migli": "RECO Migliavacca",
     "NEE_PM": "NEE Migli-P_Model",
     "EBIO_GEE": "WRF GPP",
     "EBIO_RES": "WRF RECO",
     "NEE": "WRF NEE",
+    "T2": "WRF T2M",
 }
 WRF_factors = [1, 1, 1, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
 
@@ -326,56 +326,57 @@ for coarse_domain in coarse_domains:
                     hgt_diff = (proj_hgt_coarse_domain[mask] - hgt_3km[mask]) / 1000
 
                     # Plotting
-                    # if plotting_scatter:
-                    if WRF_var == "T2":
-                        fig, ax = plt.subplots(figsize=(8, 6))
+                    if plotting_scatter:
+                        if WRF_var == "T2":
+                            fig, ax = plt.subplots(figsize=(8, 6))
 
-                        idx = np.isfinite(WRF_diff) & np.isfinite(hgt_diff)
-                        coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
-                        x_poly = np.linspace(hgt_diff[idx].min(), hgt_diff[idx].max())
-                        y_poly = np.polyval(coeff, x_poly)
-                        # calculate the R2 and the RMSE value
+                            idx = np.isfinite(WRF_diff) & np.isfinite(hgt_diff)
+                            #coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
+                            coeff, _, _, _ = np.linalg.lstsq(hgt_diff[idx][:, np.newaxis], WRF_diff[idx], rcond=None)
+                            x_poly = np.linspace(hgt_diff[idx].min(), hgt_diff[idx].max())
+                            y_poly = np.polyval(coeff, x_poly)
+                            # calculate the R2 and the RMSE value
 
-                        r2 = r2_score(WRF_diff[idx], hgt_diff[idx])
-                        rmse = np.sqrt(mean_squared_error(WRF_diff[idx], hgt_diff[idx]))
+                            r2 = r2_score(WRF_diff[idx], hgt_diff[idx])
+                            rmse = np.sqrt(mean_squared_error(WRF_diff[idx], hgt_diff[idx]))
 
-                        ax.text(
-                            0.05,
-                            0.95,
-                            f"R² = {r2:.2f}\nRMSE = {rmse:.2f}",
-                            transform=ax.transAxes,
-                            fontsize=12,
-                            verticalalignment="top",
-                            bbox=dict(
-                                boxstyle="round,pad=0.3",
-                                edgecolor="black",
-                                facecolor="white",
-                            ),
-                        )
+                            ax.text(
+                                0.05,
+                                0.95,
+                                f"R² = {r2:.2f}\nRMSE = {rmse:.2f}",
+                                transform=ax.transAxes,
+                                fontsize=12,
+                                verticalalignment="top",
+                                bbox=dict(
+                                    boxstyle="round,pad=0.3",
+                                    edgecolor="black",
+                                    facecolor="white",
+                                ),
+                            )
 
-                        ax.scatter(hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5)
-                        ax.plot(
-                            x_poly,
-                            y_poly,
-                            color="b",
-                            lw=1.5,
-                            linestyle="--",
-                            label=f"y = {coeff[0]:.2f}x + {coeff[1]:.2f}",
-                        )
-                        ax.legend()
-                        ax.set_title(
-                            f"WRF {WRF_var} diff. {coarse_domain} - 3km vs. height diff with stdev {STD_TOPO_flag} {STD_TOPO}"
-                        )
-                        ax.set_xlabel("Height Difference [km]")
-                        ax.set_ylabel(f"{WRF_var} Difference")
-                        ax.set_xlim([-1.5, 1.5])
-                        ax.set_ylim([-10, 10])
-                        plt.tight_layout()
-                        plt.tight_layout()
-                        plt.savefig(
-                            f"{outfolder}correlations_of_{WRF_var}_{coarse_domain}_vs_topo_diff_{STD_TOPO_flag}_{STD_TOPO}_{time}.png"
-                        )
-                        plt.close
+                            ax.scatter(hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5)
+                            ax.plot(
+                                x_poly,
+                                y_poly,
+                                color="b",
+                                lw=1.5,
+                                linestyle="--",
+                                label=f"y = {coeff[0]:.2f}x",
+                            )
+                            ax.legend()
+                            ax.set_title(
+                                f"WRF {WRF_var} diff. {coarse_domain} - 3km vs. height diff with stdev {STD_TOPO_flag} {STD_TOPO}"
+                            )
+                            ax.set_xlabel("Height Difference [km]")
+                            ax.set_ylabel(f"{WRF_var} Difference")
+                            ax.set_xlim([-1.5, 1.5])
+                            ax.set_ylim([-10, 10])
+                            plt.tight_layout()
+                            plt.tight_layout()
+                            plt.savefig(
+                                f"{outfolder}correlations_of_{WRF_var}_{coarse_domain}_vs_topo_diff_{STD_TOPO_flag}_{STD_TOPO}_{time}.png"
+                            )
+                            plt.close
 
                     WRF_var_diff_to_3km_2D = np.where(
                         mask, proj_WRF_var_coarse_domain - WRF_var_3km, np.nan
@@ -432,10 +433,10 @@ for coarse_domain in coarse_domains:
                         diff_var_t = masked_diff_var[idx]
                         diff_T2_t = np.array(diff_T2_t)
                         diff_var_t = np.array(diff_var_t)
-                        coeff = np.polyfit(
-                            masked_diff_T2[idx], masked_diff_var[idx], deg=1
-                        )
-                        a, b = coeff
+                        # coeff = np.polyfit(masked_diff_T2[idx], masked_diff_var[idx], deg=1)
+                        coeff, _, _, _ = np.linalg.lstsq(masked_diff_T2[idx][:, np.newaxis], masked_diff_var[idx], rcond=None)
+
+                        # a, b = coeff
                         if plotting_scatter_all:
                             fig, ax = plt.subplots()
                             ax.scatter(
@@ -455,7 +456,7 @@ for coarse_domain in coarse_domains:
                                 color="b",
                                 lw=1.5,
                                 linestyle="--",
-                                label=f"y_all = {a:.2f} * x + {b:.2f}",
+                                label=f"y = {coeff:.2f} * x",
                             )
                             ax.legend()
                             ax.xaxis.grid(True, which="major")
@@ -475,7 +476,7 @@ for coarse_domain in coarse_domains:
                             )
                             plt.savefig(figname)
                             plt.close()
-                        coeff_all_T.append(a)
+                        coeff_all_T.append(coeff[0])
                     except:
                         print("Not enough Data for T_ref=%s" % T_ref)
                         coeff_all_T.append(np.nan)
@@ -496,10 +497,22 @@ for coarse_domain in coarse_domains:
             if T_bin_flag:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
                 ax.set_xlabel("T_ref")
-                ax.set_ylabel("Coefficients [mmol CO2 m² s⁻¹ °C⁻¹]")
+                ax.set_ylabel("Coefficients [μmol CO2 m² s⁻¹ °C⁻¹]")
                 ax.set_title(
-                    f"Coefficient Values for NEE, GPP, and RECO at giff_hgt {diff_hgt_mean:.2f}m and nonproj. {diff_hgt_mean_nonproj:.2f}m"
+                    f"Coefficient Values for NEE, GPP, and RECO"
                 )
+                # # Create a second y-axis
+                # ax2 = ax.twinx()
+                # # Conversion factor from mmol CO₂ to gC:
+                # # 1 mmol CO₂ = 10-6 mol CO₂
+                # # 1 mol CO₂ = 12 g C
+                # # 1 day = 86400 s
+                # conversion_factor = 1.0368  # (12 × 10⁻⁶ × 86400)
+
+                # # Apply the conversion
+                # ax2.set_ylim(ax.get_ylim()[0] * conversion_factor, ax.get_ylim()[1] * conversion_factor)
+                # ax2.set_ylabel("Coefficients [gC m² d⁻¹ °C⁻¹]")
+
                 figname = (
                     outfolder
                     + f"WRF_T_ref_coefficients_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"

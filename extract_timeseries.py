@@ -108,7 +108,7 @@ def extract_datetime_from_filename(filename):
     return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
 
-def exctract_timeseries(wrf_path, start_date, end_date, method):
+def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
 
     gpp_pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
     migli_path = "/scratch/c7071034/DATA/RECO_Migli"
@@ -432,10 +432,18 @@ def exctract_timeseries(wrf_path, start_date, end_date, method):
         gpp_pmodel_file = [
             f
             for f in sorted(
-                glob.glob(os.path.join(gpp_pmodel_path, "gpp_pmodel_subdailyC3_*"))
+                glob.glob(os.path.join(gpp_pmodel_path, f"gpp_pmodel_{subday}*"))
             )
             if file_end in f
         ][0]
+        # TODO: run P-Model only for timeseries with linear data not from area data.
+        # Test for standard P-Model
+        # gpp_pmodel_file = [
+        #     f
+        #     for f in sorted(glob.glob(os.path.join(gpp_pmodel_path, "gpp_pmodel_*")))
+        #     if file_end in f
+        # ][0]
+
         gpp_pmodel = xr.open_dataset(gpp_pmodel_file)
         gpp_pmodel = gpp_pmodel["GPP_Pmodel"].values
 
@@ -603,13 +611,21 @@ def main():
             type=str,
             help="'NN' nearest neighbour, NNhgt for NN on same height or 'interpolated'",
         )
+        parser.add_argument(
+            "-subday",
+            "--subday",
+            type=str,
+            help="subdailyC3_ for subdaily data or empty for daily data",
+        )
 
         args = parser.parse_args()
         wrf_path = args.wrf_path
         start_date = args.start
         end_date = args.end
         method = args.method
+        subday = args.subday
     else:  # to run locally for single cases
+        subday = ""  # "subdailyC3_" or "" for daily data
         start_date = "2012-07-15 00:00:00"
         end_date = "2012-07-30 00:00:00"
         wrf_paths = [
@@ -620,7 +636,7 @@ def main():
         ]
         method = "NNhgt"  # "NN" nearest neighbour, NNhgt or "interpolated"
     for wrf_path in wrf_paths:
-        exctract_timeseries(wrf_path, start_date, end_date, method)
+        exctract_timeseries(wrf_path, start_date, end_date, method, subday)
     # exctract_timeseries(wrf_path, start_date, end_date,"interpolate")
 
 

@@ -5,6 +5,132 @@ import xarray as xr
 from pyrealm.pmodel import PModel, PModelEnvironment, SubdailyScaler, SubdailyPModel
 from scipy.ndimage import uniform_filter1d
 
+from pyrealm.pmodel import PModel, PModelEnvironment, SubdailyScaler, SubdailyPModel
+from pyrealm.pmodel.functions import calc_ftemp_arrh, calc_ftemp_kphio
+from pyrealm.pmodel.subdaily import memory_effect
+from pyrealm.pmodel.optimal_chi import OptimalChiPrentice14
+
+
+def pModel_subdaily(
+    datetime_subdaily: np.ndarray,
+    temp_subdaily: np.ndarray,
+    ppfd_subdaily: np.ndarray,
+    vpd_subdaily: np.ndarray,
+    co2_subdaily: np.ndarray,
+    patm_subdaily: np.ndarray,
+    fpar_subdaily: np.ndarray,
+    days_memory: float,
+    window_center_i: int,
+    half_width_i: int,
+):
+
+    # Calculate the photosynthetic environment
+    subdaily_env = PModelEnvironment(
+        tc=temp_subdaily,
+        vpd=vpd_subdaily,
+        co2=co2_subdaily,
+        patm=patm_subdaily,
+    )
+
+    # Create the fast slow scaler
+    fsscaler = SubdailyScaler(datetime_subdaily)
+
+    # Set the acclimation window as the values within a one hour window centred on noon
+    fsscaler.set_window(
+        window_center=np.timedelta64(window_center_i, "h"),
+        half_width=np.timedelta64(half_width_i, "m"),
+    )
+
+    # Fit the P Model with fast and slow responses
+    pmodel_subdaily = SubdailyPModel(
+        env=subdaily_env,
+        fs_scaler=fsscaler,
+        allow_holdover=True,
+        ppfd=ppfd_subdaily,
+        fapar=fpar_subdaily,
+    )
+
+    temp_acclim = fsscaler.get_daily_means(temp_subdaily)
+    co2_acclim = fsscaler.get_daily_means(co2_subdaily)
+    vpd_acclim = fsscaler.get_daily_means(vpd_subdaily)
+    patm_acclim = fsscaler.get_daily_means(patm_subdaily)
+    ppfd_acclim = fsscaler.get_daily_means(ppfd_subdaily)
+    fapar_acclim = fsscaler.get_daily_means(fpar_subdaily)
+
+    # Fit the P Model to the acclimation conditions
+    daily_acclim_env = PModelEnvironment(
+        tc=temp_acclim, vpd=vpd_acclim, co2=co2_acclim, patm=patm_acclim
+    )
+
+    pmodel_acclim = PModel(daily_acclim_env, kphio=1 / 8)
+    pmodel_acclim.estimate_productivity(fapar=fapar_acclim, ppfd=ppfd_acclim)
+    # pmodel_acclim.summarize()
+
+    ha_vcmax25 = 65330
+    ha_jmax25 = 43900
+    tk_acclim = temp_acclim + pmodel_subdaily.env.core_const.k_CtoK
+    vcmax25_acclim = pmodel_acclim.vcmax * (1 / calc_ftemp_arrh(tk_acclim, ha_vcmax25))
+    jmax25_acclim = pmodel_acclim.jmax * (1 / calc_ftemp_arrh(tk_acclim, ha_jmax25))
+    # Calculation of memory effect in xi, vcmax25 and jmax25
+    xi_real = memory_effect(
+        pmodel_acclim.optchi.xi, alpha=1 / days_memory, allow_holdover=True
+    )
+    vcmax25_real = memory_effect(
+        vcmax25_acclim, alpha=1 / days_memory, allow_holdover=True
+    )
+    jmax25_real = memory_effect(
+        jmax25_acclim, alpha=1 / days_memory, allow_holdover=True
+    )
+    tk_subdaily = subdaily_env.tc + pmodel_subdaily.env.core_const.k_CtoK
+
+    # Fill the realised jmax and vcmax from subdaily to daily
+    vcmax25_subdaily = fsscaler.fill_daily_to_subdaily(vcmax25_real)
+    jmax25_subdaily = fsscaler.fill_daily_to_subdaily(jmax25_real)
+
+    # Adjust to actual temperature at subdaily timescale
+    vcmax_subdaily = vcmax25_subdaily * calc_ftemp_arrh(tk=tk_subdaily, ha=ha_vcmax25)
+    jmax_subdaily = jmax25_subdaily * calc_ftemp_arrh(tk=tk_subdaily, ha=ha_jmax25)
+
+    # Interpolate xi to subdaily scale
+    xi_subdaily = fsscaler.fill_daily_to_subdaily(xi_real)
+
+    # Calculate the optimal chi, imposing the realised xi values
+    subdaily_chi = OptimalChiPrentice14(env=subdaily_env)
+    subdaily_chi.estimate_chi(xi_values=xi_subdaily)
+
+    # Calculate Ac
+    Ac_subdaily = (
+        vcmax_subdaily
+        * (subdaily_chi.ci - subdaily_env.gammastar)
+        / (subdaily_chi.ci + subdaily_env.kmm)
+    )
+
+    # Calculate J and Aj
+    phi = (1 / 8) * calc_ftemp_kphio(tc=temp_subdaily)
+    iabs = fpar_subdaily * ppfd_subdaily
+
+    J_subdaily = (4 * phi * iabs) / np.sqrt(1 + ((4 * phi * iabs) / jmax_subdaily) ** 2)
+
+    Aj_subdaily = (
+        (J_subdaily / 4)
+        * (subdaily_chi.ci - subdaily_env.gammastar)
+        / (subdaily_chi.ci + 2 * subdaily_env.gammastar)
+    )
+
+    # Calculate GPP and convert from micromols to micrograms
+    GPP_subdaily = (
+        np.minimum(Ac_subdaily, Aj_subdaily)
+        * pmodel_subdaily.env.core_const.k_c_molmass
+    )
+
+    gC_to_mumol = 0.0833  # 1 µg C m⁻² s⁻¹ × (1 µmol C / 12.01 µg C) × (1 µmol CO₂ / 1 µmol C) = 0.0833 µmol CO₂ m⁻² s⁻¹
+    GPP_subdaily *= gC_to_mumol
+    # print(
+    #     f"GPPmean {np.nanmean(GPP_subdaily)} at {days_memory} days_mem at {window_center_i}h {half_width_i}m"
+    # )
+
+    return GPP_subdaily
+
 
 def migliavacca_LinGPP(
     T_ref, T0, E0, k_mm, k2, alpha_p, alpha_lai, max_lai, R_lai0, GPP, P, T_A
@@ -149,8 +275,8 @@ modis_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli"
 
 # pmodel parameters
-days_mem = 14
-half_wdth = 90
+days_mem = 21
+half_wdth = 30
 window_cent = 13
 gC_to_mumol = 0.0833  # 1 µg C m⁻² s⁻¹ × (1 µmol C / 12.01 µg C) × (1 µmol CO₂ / 1 µmol C) = 0.0833 µmol CO₂ m⁻² s⁻¹
 
@@ -160,9 +286,9 @@ for wrf_path in wrf_paths:
     files = os.listdir(wrf_path)
     files = [f for f in files if f.startswith("wrfout_d01")]
     files.sort()
-    timesteps = len(files)
+    timesteps = len(files) - 1
     # get datetime from first file
-    datetimestart = files[0].split("_")[2] + " " + files[0].split("_")[3]
+    datetimestart = files[1].split("_")[2] + " " + files[1].split("_")[3]
     wrf_ds = xr.open_dataset(wrf_path + "/" + files[0])
     temp = wrf_ds["T2"].to_numpy()
     l, m, n = temp.shape
@@ -232,19 +358,22 @@ for wrf_path in wrf_paths:
         fpar_modis[IVGTYP_mask] = 0
 
         # Ensure proper dimensions and clean invalid data
-        temp[temp < -25] = np.nan  # Mask temperatures below -25°C
-        vpd = np.clip(vpd, 0, np.inf)  # Force VPD ≥ 0
+        temp[temp < -25] = -25  # Mask temperatures below -25°C
+        vpd[vpd < 0] = 0
+        ppfd[ppfd < 0] = 0
+        co2[co2 < 0] = 0
+        co2[co2 > 1000] = 1000
+        patm[patm < 30000] = 30000
+        patm[patm > 110000] = 110000
 
-        # # Run P-model environment
+        # # # Run P-model environment withoud subdaily scaling
         # env = PModelEnvironment(tc=temp, co2=co2, patm=patm, vpd=vpd)
-        # env.summarize()
-
-        # # Estimate productivity
-        # model = PModel(env)
+        # model = PModel(
+        #     env
+        # )  # TODO try: model = PModel(env, method_kphio="fixed", reference_kphio=1 / 8)
         # model.estimate_productivity(fpar_modis, ppfd)
         # gC_to_mumol = 0.0833  # 1 µg C m⁻² s⁻¹ × (1 µmol C / 12.01 µg C) × (1 µmol CO₂ / 1 µmol C) = 0.0833 µmol CO₂ m⁻² s⁻¹
         # data = model.gpp[0, :, :] * gC_to_mumol
-        # # save data in netcdf
         # date_time = file.split("_")[2] + "_" + file.split("_")[3]
         # modis_path_out = (
         #     f"{modis_path}gpp_pmodel/gpp_pmodel_{wrf_path_dx_str}_{date_time}.nc"
@@ -253,6 +382,7 @@ for wrf_path in wrf_paths:
         #     modis_path_out, format="NETCDF4_CLASSIC"
         # )
 
+        # save data in arrays
         tc_arr[t, :, :] = temp[0, :, :]
         co2_arr[t, :, :] = co2[0, :, :]
         patm_arr[t, :, :] = patm[0, :, :]
@@ -269,33 +399,48 @@ for wrf_path in wrf_paths:
 
         t += 1
 
-    env_arr = PModelEnvironment(tc=tc_arr, co2=co2_arr, patm=patm_arr, vpd=vpd_arr)
-    env_arr.summarize()
+    # env_arr = PModelEnvironment(tc=tc_arr, co2=co2_arr, patm=patm_arr, vpd=vpd_arr)
+    # env_arr.summarize()
 
-    # calculate GPP with acclimation
+    # # calculate GPP with acclimation
     datetimes = pd.date_range(
         start=datetimestart, periods=timesteps, freq="h"
     ).to_numpy()
 
-    fsscaler = SubdailyScaler(datetimes)
-    fsscaler.set_window(
-        window_center=np.timedelta64(window_cent, "h"),
-        half_width=np.timedelta64(half_wdth, "m"),
+    # fsscaler = SubdailyScaler(datetimes)
+    # fsscaler.set_window(
+    #     window_center=np.timedelta64(window_cent, "h"),
+    #     half_width=np.timedelta64(half_wdth, "m"),
+    # )
+
+    # subdailyC3_arr = SubdailyPModel(
+    #     env=env_arr,
+    #     fapar=fpar_modis_arr,
+    #     ppfd=ppfd_arr,
+    #     fs_scaler=fsscaler,
+    #     alpha=1 / days_mem,
+    #     allow_holdover=True,
+    # )
+    # subdailyC3_arr.gpp = subdailyC3_arr.gpp * gC_to_mumol
+
+    subdailyC3_arr = pModel_subdaily(
+        datetimes,
+        tc_arr,
+        ppfd_arr,
+        vpd_arr,
+        co2_arr,
+        patm_arr,
+        fpar_modis_arr,
+        days_mem,
+        window_cent,
+        half_wdth,
     )
 
-    subdailyC3_arr = SubdailyPModel(
-        env=env_arr,
-        fapar=fpar_modis_arr,
-        ppfd=ppfd_arr,
-        fs_scaler=fsscaler,
-        alpha=1 / days_mem,
-        allow_holdover=True,
-    )
-    subdailyC3_arr.gpp = subdailyC3_arr.gpp * gC_to_mumol
+    # TODO: Calculation of GPP using fast and slow responses
 
     t = 0
     for file in files[1:]:
-        subdailyC3_gpp = subdailyC3_arr.gpp[t, :, :]
+        subdailyC3_gpp = subdailyC3_arr[t, :, :]
         # print(t, " ", np.nanmax(subdailyC3_gpp))
         # save data in netcdf
         date_time = file.split("_")[2] + "_" + file.split("_")[3]
@@ -309,7 +454,7 @@ for wrf_path in wrf_paths:
 
     # Ensure rainc_arr is a NumPy array (3D: time, lat, lon)
     rainc_arr = np.asarray(rainc_arr)
-    subdailyC3_arr = np.asarray(subdailyC3_arr.gpp)  # Extract GPP data if needed
+    subdailyC3_arr = np.asarray(subdailyC3_arr)  # Extract GPP data if needed
 
     if rainc_arr.ndim != 3:
         raise ValueError(
@@ -321,17 +466,15 @@ for wrf_path in wrf_paths:
             f"Expected 3D array (time, lat, lon), but got shape {subdailyC3_arr.shape}"
         )
 
-    window_size = 7  # Adjust to match time step frequency
-
     # Apply rolling mean
-    rainc_avrg = uniform_filter1d(rainc_arr, size=window_size, axis=0, mode="nearest")
+    rainc_avrg = uniform_filter1d(rainc_arr, size=7 * 24, axis=0, mode="nearest")
     subdailyC3_avrg = uniform_filter1d(
-        subdailyC3_arr, size=window_size, axis=0, mode="nearest"
+        subdailyC3_arr, size=7 * 24, axis=0, mode="nearest"
     )
 
     # Compute initial mean for first `window_size` time steps
-    initial_mean_rainc = np.mean(rainc_arr[:window_size, :, :], axis=0)
-    initial_mean_subdailyC3 = np.mean(subdailyC3_arr[:window_size, :, :], axis=0)
+    initial_mean_rainc = np.mean(rainc_arr[:7, :, :], axis=0)
+    initial_mean_subdailyC3 = np.mean(subdailyC3_arr[:1, :, :], axis=0)
 
     # Fill missing values
     rainc_avrg = np.where(np.isnan(rainc_avrg), initial_mean_rainc, rainc_avrg)

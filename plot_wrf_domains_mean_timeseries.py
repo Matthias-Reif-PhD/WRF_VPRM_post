@@ -3,12 +3,12 @@ import pandas as pd
 
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
-start_date = "2012-07-15 00:00:00"
+start_date = "2012-07-22 00:00:00"
 end_date = "2012-07-30 00:00:00"
 STD_TOPO = 50
 plot_lt = False
 columns = ["RECO_migli", "GPP_pmodel", "NEE_PM", "GPP", "RECO", "NEE", "T2"]
-subdaily = "_subdailyC3"  # "_subdailyC3" or ""
+subdaily = ""  # "_subdailyC3" or ""
 
 # Save to CSV
 merged_df_gt = pd.read_csv(
@@ -95,17 +95,21 @@ for column in columns:
             data_series = data_series.dropna()
             data_series_lt = data_series_lt.dropna()
         if column != "T2":
-            sum_over_time = data_series.sum() * 3 * 3600 * 1e-6
-            label_i = f"{column} {res} > std {STD_TOPO}; sum: {sum_over_time:.2f}"
-            sum_over_time_lt = data_series_lt.sum() * 3 * 3600 * 1e-6
-            label_i_lt = f"{column} {res} < std {STD_TOPO}; sum: {sum_over_time_lt:.2f}"
+            daily_exch = data_series.resample("D").mean()  # Daily mean
+            gC_per_day = daily_exch * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day_mean = gC_per_day.mean()
+            label_i = (
+                f"{column} {res} > std {STD_TOPO} mean={gC_per_day_mean:.2f} gC/m²/day"
+            )
+            daily_exch_lt = data_series_lt.resample("D").mean()  # Daily mean
+            gC_per_day_lt = daily_exch_lt * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day_mean_lt = gC_per_day_lt.mean()
+            label_i_lt = f"{column} {res} < std {STD_TOPO} mean={gC_per_day_mean_lt:.2f} gC/m²/day"
         else:
             sum_over_time = data_series.mean()
-            label_i = f"{column} {res} > std {STD_TOPO}; mean: {sum_over_time:.2f}"
+            label_i = f"{column} {res} > std {STD_TOPO}; mean={sum_over_time:.2f}"
             sum_over_time_lt = data_series_lt.mean()
-            label_i_lt = (
-                f"{column} {res} < std {STD_TOPO}; mean: {sum_over_time_lt:.2f}"
-            )
+            label_i_lt = f"{column} {res} < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
         # Plot the data
         plt.plot(
             data_series.index,
@@ -144,22 +148,22 @@ for column in columns:
         diff_gt = merged_df_gt[f"{column}_{res}"] - merged_df_gt[f"{column}_3km"]
         diff_lt = merged_df_lt[f"{column}_{res}"] - merged_df_lt[f"{column}_3km"]
         if column != "T2":
-            sum_over_time_gt = diff_gt.sum() * 3 * 3600 * 1e-6
-            label_gt = (
-                f"{column} {res}-3km > std {STD_TOPO}; sum: {sum_over_time_gt:.2f}"
-            )
-            sum_over_time_lt = diff_lt.sum() * 3 * 3600 * 1e-6
-            label_lt = (
-                f"{column} {res}-3km < std {STD_TOPO}; sum: {sum_over_time_lt:.2f}"
-            )
+            daily_exch = data_series.resample("D").mean()  # Daily mean
+            gC_per_day = daily_exch * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day_mean = gC_per_day.mean()
+            label_gt = f"{column} {res}-3km > std {STD_TOPO} mean={gC_per_day_mean:.2f} gC/m²/day"
+            daily_exch_lt = data_series_lt.resample("D").mean()  # Daily mean
+            gC_per_day_lt = daily_exch_lt * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day_mean_lt = gC_per_day_lt.mean()
+            label_lt = f"{column} {res}-3km < std {STD_TOPO} mean={gC_per_day_mean_lt:.2f} gC/m²/day"
         else:
             sum_over_time_gt = diff_gt.mean()
             label_gt = (
-                f"{column} {res}-3km > std {STD_TOPO}; mean: {sum_over_time_gt:.2f}"
+                f"{column} {res}-3km > std {STD_TOPO}; mean={sum_over_time_gt:.2f}"
             )
             sum_over_time_lt = diff_lt.mean()
             label_lt = (
-                f"{column} {res}-3km < std {STD_TOPO}; mean: {sum_over_time_lt:.2f}"
+                f"{column} {res}-3km < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
             )
         plt.plot(
             diff_gt.index,
@@ -213,11 +217,15 @@ for column in columns:
         if res == "CAMS":
             data_series = data_series.dropna()
             data_series_lt = data_series_lt.dropna()
-        if column != "T2":
-            sum_over_time = data_series.sum() * 3 * 3600 * 1e-6
-            label_i = f"{column} {res} > std {STD_TOPO}; sum: {sum_over_time:.2f}"
-            sum_over_time_lt = data_series_lt.sum() * 3 * 3600 * 1e-6
-            label_i_lt = f"{column} {res} < std {STD_TOPO}; sum: {sum_over_time_lt:.2f}"
+        if column != "T2":  # Daily mean
+            gC_per_day = data_series * 60 * 60 * 24 * 1e-6 * 12
+            gC_per_day_mean = gC_per_day.mean()
+            label_i = (
+                f"{column} {res} > std {STD_TOPO} with {gC_per_day_mean:.2f} gC/m²/day"
+            )
+            gC_per_day_lt = data_series_lt * 60 * 60 * 24 * 1e-6 * 12
+            gC_per_day_mean_lt = gC_per_day_lt.mean()
+            label_i_lt = f"{column} {res} < std {STD_TOPO} with {gC_per_day_mean_lt:.2f} gC/m²/day"
         else:
             sum_over_time = data_series.mean()
             label_i = f"{column} {res} > std {STD_TOPO}; mean: {sum_over_time:.2f}"
@@ -264,22 +272,20 @@ for column in columns:
         diff_gt = hourly_avg[f"{column}_{res}"] - hourly_avg[f"{column}_3km"]
         diff_lt = hourly_avg_lt[f"{column}_{res}"] - hourly_avg_lt[f"{column}_3km"]
         if column != "T2":
-            sum_over_time_gt = diff_gt.sum() * 3 * 3600 * 1e-6
-            label_gt = (
-                f"{column} {res}-3km > std {STD_TOPO}; sum: {sum_over_time_gt:.2f}"
-            )
-            sum_over_time_lt = diff_lt.sum() * 3 * 3600 * 1e-6
-            label_lt = (
-                f"{column} {res}-3km < std {STD_TOPO}; sum: {sum_over_time_lt:.2f}"
-            )
+            gC_per_day = diff_gt * 60 * 60 * 24 * 1e-6 * 12
+            gC_per_day_mean = gC_per_day.mean()
+            label_gt = f"{column} {res}-3km > std {STD_TOPO}; mean={gC_per_day_mean:.2f} gC/m²/day"
+            gC_per_day_lt = diff_lt * 60 * 60 * 24 * 1e-6 * 12
+            gC_per_day_mean_lt = gC_per_day_lt.mean()
+            label_lt = f"{column} {res}-3km < std {STD_TOPO}; mean={gC_per_day_mean_lt:.2f} gC/m²/day"
         else:
             sum_over_time_gt = diff_gt.mean()
             label_gt = (
-                f"{column} {res}-3km > std {STD_TOPO}; mean: {sum_over_time_gt:.2f}"
+                f"{column} {res}-3km > std {STD_TOPO}; mean={sum_over_time_gt:.2f}"
             )
             sum_over_time_lt = diff_lt.mean()
             label_lt = (
-                f"{column} {res}-3km < std {STD_TOPO}; mean: {sum_over_time_lt:.2f}"
+                f"{column} {res}-3km < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
             )
         plt.plot(
             diff_gt.index,
@@ -318,10 +324,12 @@ plt.figure(figsize=(10, 6))
 for res in resolutions:
     data_series = hourly_avg[f"GPP_{res}"] - hourly_avg[f"GPP_pmodel_{res}"]
     data_series_lt = hourly_avg_lt[f"GPP_{res}"] - hourly_avg_lt[f"GPP_pmodel_{res}"]
-    sum_over_time = data_series.sum() * 3 * 3600 * 1e-6
-    label_i = f"{res} > std {STD_TOPO}; sum: {sum_over_time:.2f}"
-    sum_over_time_lt = data_series_lt.sum() * 3 * 3600 * 1e-6
-    label_i_lt = f"{res} < std {STD_TOPO}; sum: {sum_over_time_lt:.2f}"
+    gC_per_day = data_series * 60 * 60 * 24 * 1e-6 * 12
+    gC_per_day_mean = gC_per_day.mean()
+    label_i = f"{res} > std {STD_TOPO}; mean={gC_per_day_mean:.2f}"
+    gC_per_day_lt = data_series_lt * 60 * 60 * 24 * 1e-6 * 12
+    gC_per_day_mean_lt = gC_per_day_lt.mean()
+    label_i_lt = f"{res} < std {STD_TOPO}; mean={gC_per_day_mean_lt:.2f}"
 
     plt.plot(
         hourly_avg.index,
@@ -358,10 +366,12 @@ plt.figure(figsize=(10, 6))
 for res in resolutions:
     data_series = hourly_avg[f"RECO_{res}"] - hourly_avg[f"RECO_migli_{res}"]
     data_series_lt = hourly_avg_lt[f"RECO_{res}"] - hourly_avg_lt[f"RECO_migli_{res}"]
-    sum_over_time = data_series.sum() * 3 * 3600 * 1e-6
-    label_i = f"{res} > std {STD_TOPO}; sum: {sum_over_time:.2f}"
-    sum_over_time_lt = data_series_lt.sum() * 3 * 3600 * 1e-6
-    label_i_lt = f"{res} < std {STD_TOPO}; sum: {sum_over_time_lt:.2f}"
+    gC_per_day = data_series * 60 * 60 * 24 * 1e-6 * 12
+    gC_per_day_mean = gC_per_day.mean()
+    label_i = f"{res} > std {STD_TOPO}; mean={gC_per_day_mean:.2f} gC/m²/day"
+    gC_per_day_lt = data_series_lt * 60 * 60 * 24 * 1e-6 * 12
+    gC_per_day_mean_lt = gC_per_day_lt.mean()
+    label_i_lt = f"{res} < std {STD_TOPO}; mean={gC_per_day_mean_lt:.2f} gC/m²/day"
     plt.plot(
         hourly_avg.index,
         hourly_avg[f"RECO_{res}"] - hourly_avg[f"RECO_migli_{res}"],
