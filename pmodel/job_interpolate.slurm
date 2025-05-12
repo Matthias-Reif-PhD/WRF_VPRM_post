@@ -9,4 +9,4 @@ module purge
 module load Anaconda3/2023.03/miniconda-base-2023.03
 eval "$(/bin/conda shell.bash hook)"
 conda activate /scratch/c7071034/conda_envs/pyrealm
-srun python interpolate_fpar_on_wrf.py
+srun python interpolate_fpar_gapfilled_on_wrf.py

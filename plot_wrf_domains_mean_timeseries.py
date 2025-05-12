@@ -7,15 +7,24 @@ start_date = "2012-07-22 00:00:00"
 end_date = "2012-07-30 00:00:00"
 STD_TOPO = 50
 plot_lt = False
+ref_sim = "_REF" # "_REF" to use REF simulation or "" for tuned values
 columns = ["RECO_migli", "GPP_pmodel", "NEE_PM", "GPP", "RECO", "NEE", "T2"]
 subdaily = ""  # "_subdailyC3" or ""
-
+units = [
+    " [µmol m² s⁻¹]",
+    " [µmol m² s⁻¹]",
+    " [µmol m² s⁻¹]",
+    " [µmol m² s⁻¹]",
+    " [µmol m² s⁻¹]",
+    " [µmol m² s⁻¹]",
+    " [°C]",
+]
 # Save to CSV
 merged_df_gt = pd.read_csv(
-    f"{csv_folder}timeseries_domain_averaged{subdaily}_std_topo_gt_{STD_TOPO}_{start_date}_{end_date}.csv"
+    f"{csv_folder}timeseries_domain_averaged{ref_sim}{subdaily}_std_topo_gt_{STD_TOPO}_{start_date}_{end_date}.csv"
 )
 merged_df_lt = pd.read_csv(
-    f"{csv_folder}timeseries_domain_averaged{subdaily}_std_topo_lt_{STD_TOPO}_{start_date}_{end_date}.csv"
+    f"{csv_folder}timeseries_domain_averaged{ref_sim}{subdaily}_std_topo_lt_{STD_TOPO}_{start_date}_{end_date}.csv"
 )
 
 # Variables to plot
@@ -74,7 +83,7 @@ resolution_colors = {
 }
 
 # Create separate plots for each variable
-for column in columns:
+for column, unit in zip(columns, units):
     plt.figure(figsize=(10, 6))
     # Extract data for the current variable across all resolutions
     for res in resolutions:
@@ -95,21 +104,20 @@ for column in columns:
             data_series = data_series.dropna()
             data_series_lt = data_series_lt.dropna()
         if column != "T2":
-            daily_exch = data_series.resample("D").mean()  # Daily mean
-            gC_per_day = daily_exch * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
-            gC_per_day_mean = gC_per_day.mean()
-            label_i = (
-                f"{column} {res} > std {STD_TOPO} mean={gC_per_day_mean:.2f} gC/m²/day"
+            # hourly_avg = merged_df_gt[numeric_columns].groupby("hour").mean()
+            gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            label_i = f"{column} {res} > std {STD_TOPO} mean={gC_per_day:.2f} gC/m²/day"
+            gC_per_day_lt = (
+                data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+            )  # gC m^-2 d^-1
+            label_i_lt = (
+                f"{column} {res} < std {STD_TOPO} mean={gC_per_day_lt:.2f} gC/m²/day"
             )
-            daily_exch_lt = data_series_lt.resample("D").mean()  # Daily mean
-            gC_per_day_lt = daily_exch_lt * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
-            gC_per_day_mean_lt = gC_per_day_lt.mean()
-            label_i_lt = f"{column} {res} < std {STD_TOPO} mean={gC_per_day_mean_lt:.2f} gC/m²/day"
         else:
             sum_over_time = data_series.mean()
-            label_i = f"{column} {res} > std {STD_TOPO}; mean={sum_over_time:.2f}"
+            label_i = f"{column}{ref_sim} {res} > std {STD_TOPO}; mean={sum_over_time:.2f}"
             sum_over_time_lt = data_series_lt.mean()
-            label_i_lt = f"{column} {res} < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
+            label_i_lt = f"{column}{ref_sim} {res} < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
         # Plot the data
         plt.plot(
             data_series.index,
@@ -129,13 +137,13 @@ for column in columns:
     # Customize the plot
     plt.title(f"Comparison of {column} Across resolutions")
     plt.xlabel("Time")
-    plt.ylabel(column)
+    plt.ylabel(column + " " + unit)
     plt.legend()
     plt.grid(True)
 
     # Show the plot
     plt.tight_layout()
-    plotname = f"{outfolder}timeseries_{column}_domain_averaged{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+    plotname = f"{outfolder}timeseries_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
     plt.savefig(plotname)
     plt.close()
@@ -148,23 +156,17 @@ for column in columns:
         diff_gt = merged_df_gt[f"{column}_{res}"] - merged_df_gt[f"{column}_3km"]
         diff_lt = merged_df_lt[f"{column}_{res}"] - merged_df_lt[f"{column}_3km"]
         if column != "T2":
-            daily_exch = data_series.resample("D").mean()  # Daily mean
-            gC_per_day = daily_exch * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
-            gC_per_day_mean = gC_per_day.mean()
-            label_gt = f"{column} {res}-3km > std {STD_TOPO} mean={gC_per_day_mean:.2f} gC/m²/day"
-            daily_exch_lt = data_series_lt.resample("D").mean()  # Daily mean
-            gC_per_day_lt = daily_exch_lt * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
-            gC_per_day_mean_lt = gC_per_day_lt.mean()
-            label_lt = f"{column} {res}-3km < std {STD_TOPO} mean={gC_per_day_mean_lt:.2f} gC/m²/day"
-        else:
-            sum_over_time_gt = diff_gt.mean()
+            gC_per_day = diff_gt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
             label_gt = (
-                f"{column} {res}-3km > std {STD_TOPO}; mean={sum_over_time_gt:.2f}"
+                f"{column} {res}-3km > std {STD_TOPO} mean={gC_per_day:.2f} gC/m²/day"
             )
-            sum_over_time_lt = diff_lt.mean()
-            label_lt = (
-                f"{column} {res}-3km < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
-            )
+            gC_per_day_lt = diff_lt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            label_lt = f"{column} {res}-3km < std {STD_TOPO} mean={gC_per_day_lt:.2f} gC/m²/day"
+        else:
+            gC_per_day = diff_gt.mean()
+            label_gt = f"{column}{ref_sim} {res}-3km > std {STD_TOPO}; mean={gC_per_day:.2f}"
+            gC_per_day_lt = diff_lt.mean()
+            label_lt = f"{column}{ref_sim} {res}-3km < std {STD_TOPO}; mean={gC_per_day_lt:.2f}"
         plt.plot(
             diff_gt.index,
             diff_gt,
@@ -184,13 +186,13 @@ for column in columns:
     # Customize the plot
     plt.title(f"Differences of coarse(dx)-3km of {column} across resolutions")
     plt.xlabel("Time")
-    plt.ylabel(column)
+    plt.ylabel(column + " " + unit)
     plt.legend()
     plt.grid(True)
 
     # Show the plot
     plt.tight_layout()
-    plotname = f"{outfolder}timeseries_diff_of_dx-3km_{column}_domain_averaged{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+    plotname = f"{outfolder}timeseries_diff_of_dx-3km_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
     plt.savefig(plotname)
     plt.close()
@@ -218,20 +220,20 @@ for column in columns:
             data_series = data_series.dropna()
             data_series_lt = data_series_lt.dropna()
         if column != "T2":  # Daily mean
-            gC_per_day = data_series * 60 * 60 * 24 * 1e-6 * 12
-            gC_per_day_mean = gC_per_day.mean()
-            label_i = (
-                f"{column} {res} > std {STD_TOPO} with {gC_per_day_mean:.2f} gC/m²/day"
+            gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            label_i = f"{column} {res} > std {STD_TOPO} with {gC_per_day:.2f} gC/m²/day"
+            gC_per_day_lt = (
+                data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+            )  # gC m^-2 d^-1
+            label_i_lt = (
+                f"{column} {res} < std {STD_TOPO} with {gC_per_day_lt:.2f} gC/m²/day"
             )
-            gC_per_day_lt = data_series_lt * 60 * 60 * 24 * 1e-6 * 12
-            gC_per_day_mean_lt = gC_per_day_lt.mean()
-            label_i_lt = f"{column} {res} < std {STD_TOPO} with {gC_per_day_mean_lt:.2f} gC/m²/day"
         else:
             sum_over_time = data_series.mean()
-            label_i = f"{column} {res} > std {STD_TOPO}; mean: {sum_over_time:.2f}"
+            label_i = f"{column}{ref_sim} {res} > std {STD_TOPO}; mean: {sum_over_time:.2f}"
             sum_over_time_lt = data_series_lt.mean()
             label_i_lt = (
-                f"{column} {res} < std {STD_TOPO}; mean: {sum_over_time_lt:.2f}"
+                f"{column}{ref_sim} {res} < std {STD_TOPO}; mean: {sum_over_time_lt:.2f}"
             )
         # Plot the data
         plt.plot(
@@ -253,13 +255,13 @@ for column in columns:
     # Customize the plot
     plt.title(f"Comparison hourly averages of {column} Across resolutions")
     plt.xlabel("Time")
-    plt.ylabel(column)
+    plt.ylabel(column + " " + unit)
     plt.legend()
     plt.grid(True)
 
     # Show the plot
     plt.tight_layout()
-    plotname = f"{outfolder}timeseries_hourly_{column}_domain_averaged{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+    plotname = f"{outfolder}timeseries_hourly_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
     plt.savefig(plotname)
     plt.close()
@@ -272,20 +274,20 @@ for column in columns:
         diff_gt = hourly_avg[f"{column}_{res}"] - hourly_avg[f"{column}_3km"]
         diff_lt = hourly_avg_lt[f"{column}_{res}"] - hourly_avg_lt[f"{column}_3km"]
         if column != "T2":
-            gC_per_day = diff_gt * 60 * 60 * 24 * 1e-6 * 12
-            gC_per_day_mean = gC_per_day.mean()
-            label_gt = f"{column} {res}-3km > std {STD_TOPO}; mean={gC_per_day_mean:.2f} gC/m²/day"
-            gC_per_day_lt = diff_lt * 60 * 60 * 24 * 1e-6 * 12
-            gC_per_day_mean_lt = gC_per_day_lt.mean()
-            label_lt = f"{column} {res}-3km < std {STD_TOPO}; mean={gC_per_day_mean_lt:.2f} gC/m²/day"
+            gC_per_day = diff_gt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            label_gt = (
+                f"{column} {res}-3km > std {STD_TOPO}; mean={gC_per_day:.2f} gC/m²/day"
+            )
+            gC_per_day_lt = diff_lt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            label_lt = f"{column} {res}-3km < std {STD_TOPO}; mean={gC_per_day_lt:.2f} gC/m²/day"
         else:
             sum_over_time_gt = diff_gt.mean()
             label_gt = (
-                f"{column} {res}-3km > std {STD_TOPO}; mean={sum_over_time_gt:.2f}"
+                f"{column}{ref_sim} {res}-3km > std {STD_TOPO}; mean={sum_over_time_gt:.2f}"
             )
             sum_over_time_lt = diff_lt.mean()
             label_lt = (
-                f"{column} {res}-3km < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
+                f"{column}{ref_sim} {res}-3km < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
             )
         plt.plot(
             diff_gt.index,
@@ -306,13 +308,13 @@ for column in columns:
     # Customize the plot
     plt.title(f"Differences of coarse(dx)-3km of {column} across resolutions")
     plt.xlabel("Time")
-    plt.ylabel(column)
+    plt.ylabel(column + " " + unit)
     plt.legend()
     plt.grid(True)
 
     # Show the plot
     plt.tight_layout()
-    plotname = f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+    plotname = f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
     plt.savefig(plotname)
     plt.close()
@@ -324,12 +326,10 @@ plt.figure(figsize=(10, 6))
 for res in resolutions:
     data_series = hourly_avg[f"GPP_{res}"] - hourly_avg[f"GPP_pmodel_{res}"]
     data_series_lt = hourly_avg_lt[f"GPP_{res}"] - hourly_avg_lt[f"GPP_pmodel_{res}"]
-    gC_per_day = data_series * 60 * 60 * 24 * 1e-6 * 12
-    gC_per_day_mean = gC_per_day.mean()
-    label_i = f"{res} > std {STD_TOPO}; mean={gC_per_day_mean:.2f}"
-    gC_per_day_lt = data_series_lt * 60 * 60 * 24 * 1e-6 * 12
-    gC_per_day_mean_lt = gC_per_day_lt.mean()
-    label_i_lt = f"{res} < std {STD_TOPO}; mean={gC_per_day_mean_lt:.2f}"
+    gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12
+    label_i = f"{res}{ref_sim} > std {STD_TOPO}; mean={gC_per_day:.2f}"
+    gC_per_day_lt = data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+    label_i_lt = f"{res}{ref_sim} < std {STD_TOPO}; mean={gC_per_day_lt:.2f}"
 
     plt.plot(
         hourly_avg.index,
@@ -356,7 +356,7 @@ plt.grid(True)
 
 # Show the plot
 plt.tight_layout()
-plotname = f"{outfolder}timeseries_hourly_diff_of GPP_WRF_vs_pmodel_domain_averaged{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+plotname = f"{outfolder}timeseries_hourly_diff_of GPP_WRF_vs_pmodel_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
 print(f"saved plot: {plotname}")
 plt.savefig(plotname)
 plt.close()
@@ -366,12 +366,10 @@ plt.figure(figsize=(10, 6))
 for res in resolutions:
     data_series = hourly_avg[f"RECO_{res}"] - hourly_avg[f"RECO_migli_{res}"]
     data_series_lt = hourly_avg_lt[f"RECO_{res}"] - hourly_avg_lt[f"RECO_migli_{res}"]
-    gC_per_day = data_series * 60 * 60 * 24 * 1e-6 * 12
-    gC_per_day_mean = gC_per_day.mean()
-    label_i = f"{res} > std {STD_TOPO}; mean={gC_per_day_mean:.2f} gC/m²/day"
-    gC_per_day_lt = data_series_lt * 60 * 60 * 24 * 1e-6 * 12
-    gC_per_day_mean_lt = gC_per_day_lt.mean()
-    label_i_lt = f"{res} < std {STD_TOPO}; mean={gC_per_day_mean_lt:.2f} gC/m²/day"
+    gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12
+    label_i = f"{res}{ref_sim} > std {STD_TOPO}; mean={gC_per_day:.2f} gC/m²/day"
+    gC_per_day_lt = data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+    label_i_lt = f"{res}{ref_sim} < std {STD_TOPO}; mean={gC_per_day_lt:.2f} gC/m²/day"
     plt.plot(
         hourly_avg.index,
         hourly_avg[f"RECO_{res}"] - hourly_avg[f"RECO_migli_{res}"],
@@ -397,7 +395,7 @@ plt.grid(True)
 
 # Show the plot
 plt.tight_layout()
-plotname = f"{outfolder}timeseries_hourly_diff_of_RECO_WRF_vs_Migli_domain_averaged{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+plotname = f"{outfolder}timeseries_hourly_diff_of_RECO_WRF_vs_Migli_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
 print(f"saved plot: {plotname}")
 plt.savefig(plotname)
 plt.close()

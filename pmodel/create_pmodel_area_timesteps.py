@@ -11,7 +11,7 @@ from pyrealm.pmodel.subdaily import memory_effect
 from pyrealm.pmodel.optimal_chi import OptimalChiPrentice14
 
 
-def pModel_subdaily(
+def pModel_subdaily_area(
     datetime_subdaily: np.ndarray,
     temp_subdaily: np.ndarray,
     ppfd_subdaily: np.ndarray,
@@ -423,7 +423,7 @@ for wrf_path in wrf_paths:
     # )
     # subdailyC3_arr.gpp = subdailyC3_arr.gpp * gC_to_mumol
 
-    subdailyC3_arr = pModel_subdaily(
+    subdailyC3_arr = pModel_subdaily_area(
         datetimes,
         tc_arr,
         ppfd_arr,

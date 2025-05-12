@@ -108,6 +108,7 @@ T_ref_min = 0
 T_ref_max = 36
 STD_TOPOs = [50]
 STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
+ref_sim = "_REF" # "_REF" to use REF simulation or "" for tuned values
 subdaily = ""  # "_subdailyC3" or ""
 coarse_domains = ["54km", "27km", "9km"] 
 
@@ -116,7 +117,8 @@ outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
 
-WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE", "EBIO_RES", "NEE","T2"]
+# WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "NEE","T2"]
+WRF_vars = ["EBIO_GEE", "EBIO_RES","NEE", "EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "NEE"+ref_sim,"T2"]
 units = [
     " [mmol m² s⁻¹]",
     " [mmol m² s⁻¹]",
@@ -127,15 +129,19 @@ units = [
     " [K]",
 ]
 name_vars = {
-    "GPP_pmodel": "GPP P-Model",
-    "RECO_Migli": "RECO Migliavacca",
-    "NEE_PM": "NEE Migli-P_Model",
+   # "GPP_pmodel": "GPP P-Model",
+   # "RECO_Migli": "RECO Migliavacca",
+   # "NEE_PM": "NEE Migli-P_Model",
     "EBIO_GEE": "WRF GPP",
     "EBIO_RES": "WRF RECO",
     "NEE": "WRF NEE",
+    "EBIO_GEE"+ref_sim: "WRF GPP"+ref_sim,
+    "EBIO_RES"+ref_sim: "WRF RECO"+ref_sim,
+    "NEE"+ref_sim: "WRF NEE"+ref_sim,
     "T2": "WRF T2M",
 }
-WRF_factors = [1, 1, 1, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
+# WRF_factors = [1, 1, 1, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
+WRF_factors = [ -1 / 3600, 1 / 3600, 1 / 3600, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
 
 # Initialize an empty DataFrame with time as the index and locations as columns
 start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
@@ -223,6 +229,15 @@ for coarse_domain in coarse_domains:
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables["EBIO_GEE"][0, 0, :, :]
                             + nc_fid_coarse_domain.variables["EBIO_RES"][0, 0, :, :]
+                        ) * WRF_factor
+                    elif WRF_var == "NEE_REF":
+                        WRF_var_3km = (
+                            nc_fid3km.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
+                            + nc_fid3km.variables["EBIO_RES" + ref_sim][0, 0, :, :]
+                        ) * WRF_factor
+                        WRF_var_coarse_domain = (
+                            nc_fid_coarse_domain.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
+                            + nc_fid_coarse_domain.variables["EBIO_RES" + ref_sim][0, 0, :, :]
                         ) * WRF_factor
                     elif WRF_var == "GPP_pmodel":
                         # get pmodel gpp
@@ -374,7 +389,7 @@ for coarse_domain in coarse_domains:
                             plt.tight_layout()
                             plt.tight_layout()
                             plt.savefig(
-                                f"{outfolder}correlations_of_{WRF_var}_{coarse_domain}_vs_topo_diff_{STD_TOPO_flag}_{STD_TOPO}_{time}.png"
+                                f"{outfolder}correlations_of_{WRF_var}{ref_sim}_{coarse_domain}_vs_topo_diff_{STD_TOPO_flag}_{STD_TOPO}_{time}.png"
                             )
                             plt.close
 
@@ -472,7 +487,7 @@ for coarse_domain in coarse_domains:
                             )
                             figname = (
                                 outfolder
-                                + f"WRF_T2_{WRF_var}_corr{subdaily}_{STD_TOPO_flag}_STD_{STD_TOPO}_T_ref_{formatted_T_ref}_{time}.png"
+                                + f"WRF_T2_{WRF_var}_corr{ref_sim}{subdaily}_{STD_TOPO_flag}_STD_{STD_TOPO}_T_ref_{formatted_T_ref}_{time}.png"
                             )
                             plt.savefig(figname)
                             plt.close()
@@ -515,7 +530,7 @@ for coarse_domain in coarse_domains:
 
                 figname = (
                     outfolder
-                    + f"WRF_T_ref_coefficients_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"
+                    + f"WRF_Tref_coefficients{ref_sim}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"
                 )
                 plt.savefig(figname)
                 plt.close()

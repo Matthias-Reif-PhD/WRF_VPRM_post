@@ -100,9 +100,10 @@ CAMS_factors = [factor_kgC, -factor_kgC, 273.15]
 
 # Use glob to list all files in the directory
 # file_list_27km = sorted(glob.glob(os.path.join(WRF_path, "wrfout_d01*")))
-WRF_vars = ["EBIO_GEE", "EBIO_RES", "T2"]
+ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
+WRF_vars = ["EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "T2"]
 units = [" [mmol m² s⁻¹]", " [mmol m² s⁻¹]", " [K]"]
-name_vars = {"EBIO_GEE": "WRF GPP", "EBIO_RES": "WRF RECO", "T2": "WRF T2M"}
+name_vars = {"EBIO_GEE"+ref_sim: "WRF GPP", "EBIO_RES"+ref_sim: "WRF RECO", "T2": "WRF T2M"}
 WRF_factors = [-1 / 3600, 1 / 3600, 273.15]
 
 # Initialize an empty DataFrame with time as the index and locations as columns
@@ -455,6 +456,6 @@ for STD_TOPO in STD_TOPOs:
 
         # Save to CSV
         merged_df.to_csv(
-            f"{csv_folder}timeseries_domain_averaged{subdaily}_std_topo_{STD_TOPO_flag}_{STD_TOPO}_{start_date}_{end_date}.csv",
+            f"{csv_folder}timeseries_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO_flag}_{STD_TOPO}_{start_date}_{end_date}.csv",
             index=True,
         )

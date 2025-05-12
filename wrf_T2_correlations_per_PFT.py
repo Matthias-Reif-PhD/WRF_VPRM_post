@@ -158,7 +158,7 @@ labels_vprm_short = [
 plot_coeff = True
 plotting_scatter = False
 plotting_scatter_all = False
-start_date = "2012-07-22 00:00:00"
+start_date = "2012-07-01 00:00:00"
 end_date = "2012-07-30 00:00:00"
 PFTs = [1, 2, 3, 6, 7]  # 1: ENF, 2: DBF, 3: MF, 6: CRO, 7: GRA
 T_bin_size = 2
@@ -170,6 +170,7 @@ STD_TOPO = 50
 STD_TOPO_flags = [
     "gt"
 ]  # "lt" lower than or "gt" greater than STD_TOPO of both ["lt", "gt"]
+ref_sim = "_REF" # "_REF" to use REF simulation or "" for tuned values
 subdaily = ""  # "_subdailyC3" or ""
 coarse_domains = ["27km"]  # "54km", "27km", "9km"
 
@@ -178,7 +179,8 @@ outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
 
-WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE", "EBIO_RES", "NEE", "T2"]
+# WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "NEE","T2"]
+WRF_vars = ["EBIO_GEE", "EBIO_RES","NEE", "EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "NEE"+ref_sim,"T2"]
 units = [
     " [mmol m² s⁻¹]",
     " [mmol m² s⁻¹]",
@@ -189,15 +191,19 @@ units = [
     " [K]",
 ]
 name_vars = {
-    "T2": "WRF T2M",
-    "GPP_pmodel": "GPP P-Model",
-    "RECO_Migli": "RECO Migliavacca",
-    "NEE_PM": "NEE Migli-P_Model",
+   # "GPP_pmodel": "GPP P-Model",
+   # "RECO_Migli": "RECO Migliavacca",
+   # "NEE_PM": "NEE Migli-P_Model",
     "EBIO_GEE": "WRF GPP",
     "EBIO_RES": "WRF RECO",
     "NEE": "WRF NEE",
+    "EBIO_GEE"+ref_sim: "WRF GPP"+ref_sim,
+    "EBIO_RES"+ref_sim: "WRF RECO"+ref_sim,
+    "NEE"+ref_sim: "WRF NEE"+ref_sim,
+    "T2": "WRF T2M",
 }
-WRF_factors = [1, 1, 1, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
+# WRF_factors = [1, 1, 1, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
+WRF_factors = [ -1 / 3600, 1 / 3600, 1 / 3600, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
 
 # Initialize an empty DataFrame with time as the index and locations as columns
 start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
@@ -236,7 +242,6 @@ for PFT_i in PFTs:
 
         timestamps = [extract_datetime_from_filename(f) for f in file_list]
         time_index = pd.to_datetime(timestamps)
-
 
         diff_to_3km_4D = []
         T2_coarse_domain_4D = []
@@ -296,6 +301,15 @@ for PFT_i in PFTs:
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables["EBIO_GEE"][0, 0, :, :]
                             + nc_fid_coarse_domain.variables["EBIO_RES"][0, 0, :, :]
+                        ) * WRF_factor
+                    elif WRF_var == "NEE_REF":
+                        WRF_var_3km = (
+                            nc_fid3km.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
+                            + nc_fid3km.variables["EBIO_RES" + ref_sim][0, 0, :, :]
+                        ) * WRF_factor
+                        WRF_var_coarse_domain = (
+                            nc_fid_coarse_domain.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
+                            + nc_fid_coarse_domain.variables["EBIO_RES" + ref_sim][0, 0, :, :]
                         ) * WRF_factor
                     elif WRF_var == "GPP_pmodel":
                         # get pmodel gpp
@@ -469,7 +483,7 @@ for PFT_i in PFTs:
                             plt.tight_layout()
                             plt.tight_layout()
                             plt.savefig(
-                                f"{outfolder}correlations_of_{WRF_var}_PFT_{labels_vprm_short[PFT_i-1]}_{coarse_domain}_vs_topo_diff_{STD_TOPO_flag}_{STD_TOPO}_{time}.png"
+                                f"{outfolder}correlations_of_PFT_{labels_vprm_short[PFT_i-1]}_{WRF_var}{ref_sim}_{coarse_domain}_vs_topo_diff_{STD_TOPO_flag}_{STD_TOPO}_{time}.png"
                             )
                             plt.close()
 
@@ -575,7 +589,7 @@ for PFT_i in PFTs:
                             )
                             figname = (
                                 outfolder
-                                + f"WRF_T2_{WRF_var}_PFT_{labels_vprm_short[PFT_i-1]}_corr{subdaily}_{STD_TOPO_flag}_STD_{STD_TOPO}_T_ref_{formatted_T_ref}_{time}.png"
+                                + f"WRF_T2_{WRF_var}_PFT_{labels_vprm_short[PFT_i-1]}_corr{ref_sim}{subdaily}_{STD_TOPO_flag}_STD_{STD_TOPO}_T_ref_{formatted_T_ref}_{time}.png"
                             )
                             plt.savefig(figname)
                             plt.close()
@@ -605,13 +619,13 @@ for PFT_i in PFTs:
             if plot_coeff:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
                 ax.set_xlabel(r"$T_{\text{ref}}$ [°C]")
-                ax.set_ylabel("Coefficients [mmol CO2 m² s⁻¹ °C⁻¹]")
+                ax.set_ylabel("Coefficients [µmol CO2 m² s⁻¹ °C⁻¹]")
                 ax.set_title(
                     f"Coefficient Values for NEE, GPP, and RECO for {labels_vprm_short[PFT_i-1]} at {coarse_domain} vs. 3km"  # \n Percentage of {labels_vprm_short[PFT_i-1]} points from landmask  {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
                 )
                 figname = (
                     outfolder
-                    + f"WRF_T_ref_coefficients_PFT_{labels_vprm_short[PFT_i-1]}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"
+                    + f"WRF_T_ref_coefficients{ref_sim}_PFT_{labels_vprm_short[PFT_i-1]}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"
                 )
                 ax.set_xlim([T_ref_min, T_ref_max])
                 plt.savefig(figname)

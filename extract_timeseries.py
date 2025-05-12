@@ -436,13 +436,20 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             )
             if file_end in f
         ][0]
-        # TODO: run P-Model only for timeseries with linear data not from area data.
+        # TODO: run P-Model for point timeseries data not from area data.
         # Test for standard P-Model
-        # gpp_pmodel_file = [
-        #     f
-        #     for f in sorted(glob.glob(os.path.join(gpp_pmodel_path, "gpp_pmodel_*")))
-        #     if file_end in f
-        # ][0]
+        # gpp_pmodel_point = pModel_subdaily_area(
+        #     datetimes,
+        #     tc_arr,
+        #     ppfd_arr,
+        #     vpd_arr,
+        #     co2_arr,
+        #     patm_arr,
+        #     fpar_modis_arr,
+        #     days_mem,
+        #     window_cent,
+        #     half_wdth,
+        # )
 
         gpp_pmodel = xr.open_dataset(gpp_pmodel_file)
         gpp_pmodel = gpp_pmodel["GPP_Pmodel"].values

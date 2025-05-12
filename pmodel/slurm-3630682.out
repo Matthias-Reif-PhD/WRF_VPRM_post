@@ -1,0 +1,115 @@
+  Loading Anaconda3/2023.03/miniconda-base-2023.03
+  To use conda commands in your current shell session
+  and activate the base environment, first do:
+    eval "$($UIBK_CONDA_DIR/bin/conda shell.bash hook)"
+  To list available environments:
+    conda env list
+  To activate any of conda's environments, then do:
+    conda activate <environment>
+/var/spool/slurm/slurmd/job3630682/slurm_script: line 10: /bin/conda: No such file or directory
+usage: conda [-h] [--no-plugins] [-V] COMMAND ...
+conda: error: argument COMMAND: invalid choice: 'activate' (choose from 'clean', 'compare', 'config', 'create', 'info', 'init', 'install', 'list', 'notices', 'package', 'remove', 'uninstall', 'rename', 'run', 'search', 'update', 'upgrade', 'doctor', 'content-trust', 'env')
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-01T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-02T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-03T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-04T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-05T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-06T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-07T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-08T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201206300000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-09T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-10T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-11T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-12T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-13T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-14T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-15T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-16T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-17T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-18T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207100000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-19T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-20T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-21T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-22T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-23T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-24T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-25T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-26T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-27T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-28T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-29T12:00:00.nc.
+Loaded MODIS files: c_gls_FAPAR_201207200000_GLOBE_VGT_V2.0.1_europe.nc, c_gls_FAPAR_201207310000_GLOBE_VGT_V2.0.1_europe.nc
+FPAR interpolated onto WRF grid.
+Interpolated FPAR saved to /scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/fpar_interpol/interpolated_fpar_27km_2012-07-30T12:00:00.nc.
+Traceback (most recent call last):
+  File "/home/c707/c7071034/Github/WRF_VPRM_post/pmodel/interpolate_fpar_gapfilled_on_wrf.py", line 27, in <module>
+    wrf_ds = xr.open_dataset(wrf_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/c7071034/conda_envs/py_basic/lib/python3.12/site-packages/xarray/backends/api.py", line 592, in open_dataset
+    engine = plugins.guess_engine(filename_or_obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/c7071034/conda_envs/py_basic/lib/python3.12/site-packages/xarray/backends/plugins.py", line 187, in guess_engine
+    raise ValueError(error_msg)
+ValueError: did not find a match in any of xarray's currently installed IO backends ['netcdf4', 'scipy']. Consider explicitly selecting one of the installed engines via the ``engine`` parameter, or installing additional IO dependencies, see:
+https://docs.xarray.dev/en/stable/getting-started-guide/installing.html
+https://docs.xarray.dev/en/stable/user-guide/io.html
+srun: error: n001: task 0: Exited with exit code 1
+srun: launch/slurm: _step_signal: Terminating StepId=3630682.0
