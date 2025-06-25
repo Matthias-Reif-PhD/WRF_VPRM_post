@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import pandas as pd
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -71,15 +72,16 @@ def extract_datetime_from_filename(filename):
 ################################# INPUT ##############################################
 
 run_Pmodel = False # set to True if you want to run Pmodel and Migliavacca RECO
-start_date = "2012-07-02 00:00:00"
-end_date = "2012-07-03 00:00:00"
+start_date = "2012-07-01 00:00:00"
+end_date = "2012-07-31 00:00:00"
 wrf_paths = [
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250529_123825_ALPS_54km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
-]
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
+        ]
+
 
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 # set standard deviation of topography
@@ -106,22 +108,35 @@ CAMS_factors = [factor_kgC, -factor_kgC, 273.15]
 
 
 # Use glob to list all files in the directory
-# file_list_27km = sorted(glob.glob(os.path.join(WRF_path, "wrfout_d01*")))
 ref_sim = ""  # "_REF" to use REF simulation or "" for tuned values
 WRF_vars = ["EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "T2"]
 units = [" [mmol m² s⁻¹]", " [mmol m² s⁻¹]", " [K]"]
 name_vars = {"EBIO_GEE"+ref_sim: "WRF GPP", "EBIO_RES"+ref_sim: "WRF RECO", "T2": "WRF T2M"}
 WRF_factors = [-1 / 3600, 1 / 3600, 273.15]
-
-# Initialize an empty DataFrame with time as the index and locations as columns
-start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
-end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
-file_list = [
-    os.path.basename(f)  # Extract only the filename
-    for f in sorted(glob.glob(os.path.join(wrf_paths[0], "wrfout_d01*")))
-    if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
-]
 columns = ["GPP", "RECO", "T2"]
+
+# Convert to datetime (but ignore time part for full-day selection)
+start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()
+end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").date()
+
+# Collect all files
+all_files = sorted(glob.glob(os.path.join(wrf_paths[0], f"wrfout_d0*")))
+file_by_day = defaultdict(list)
+
+for f in all_files:
+    dt = extract_datetime_from_filename(f)
+    day = dt.date()
+    if start_date_obj <= day <= end_date_obj:
+        file_by_day[day].append((dt, f))
+
+# Filter for full days (24 hourly files starting from 00:00 to 23:00)
+file_list = []
+for day in sorted(file_by_day.keys()):
+    files = sorted(file_by_day[day])
+    if len(files) == 24 and all(dt.hour == i for i, (dt, _) in enumerate(files)):
+        file_list.extend(f for _, f in files)
+
+
 timestamps = [extract_datetime_from_filename(f) for f in file_list]
 time_index = pd.to_datetime(timestamps)
 

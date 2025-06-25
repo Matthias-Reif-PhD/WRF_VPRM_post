@@ -9,6 +9,7 @@ import argparse
 import sys
 import xarray as xr
 from scipy.interpolate import RegularGridInterpolator
+from collections import defaultdict
 
 
 def get_int_var(lat_target, lon_target, lats, lons, WRF_var):
@@ -114,13 +115,33 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
     if run_Pmodel:
         gpp_pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
         migli_path = "/scratch/c7071034/DATA/RECO_Migli"
+    
     wrf_path_dx_str = wrf_path.split("_")[-1]
     output_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
     d0X = "wrfout_d01"
     if wrf_path_dx_str == "1km":
         d0X = "wrfout_d02"
-    start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
-    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
+
+    # Convert to datetime (but ignore time part for full-day selection)
+    start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").date()
+
+    # Collect all files
+    all_files = sorted(glob.glob(os.path.join(wrf_path, f"{d0X}_*")))
+    file_by_day = defaultdict(list)
+
+    for f in all_files:
+        dt = extract_datetime_from_filename(f)
+        day = dt.date()
+        if start_date_obj <= day <= end_date_obj:
+            file_by_day[day].append((dt, f))
+
+    # Filter for full days (24 hourly files starting from 00:00 to 23:00)
+    file_list = []
+    for day in sorted(file_by_day.keys()):
+        files = sorted(file_by_day[day])
+        if len(files) == 24 and all(dt.hour == i for i, (dt, _) in enumerate(files)):
+            file_list.extend(f for _, f in files)
 
     # Define target locations (latitude, longitude)
     locations = [
@@ -406,13 +427,8 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             + [f"{location['name']}_RECO_Migli" for location in locations]
         )
 
-    df_out = pd.DataFrame(columns=columns)
-    file_list = [
-        f
-        for f in sorted(glob.glob(os.path.join(wrf_path, f"{d0X}*")))
-        if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
-    ]
 
+    df_out = pd.DataFrame(columns=columns)
     # Process each WRF file (representing one timestep)
     for nc_f1 in file_list:
         nc_fid1 = nc.Dataset(nc_f1, "r")
@@ -652,14 +668,14 @@ def main():
         subday = args.subday
     else:  # to run locally for single cases
         subday = ""  # "subdailyC3_" or "" for daily data
-        start_date = "2012-07-27 00:00:00"
-        end_date = "2012-07-28 00:00:00"
+        start_date = "2012-07-01 00:00:00"
+        end_date = "2012-07-31 00:00:00"
         wrf_paths = [
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_07_27_1km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_07_27_3km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250529_123825_ALPS_54km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
         ]
         method = "NNhgt"  # "NN" nearest neighbour, NNhgt or "interpolated"
     for wrf_path in wrf_paths:
