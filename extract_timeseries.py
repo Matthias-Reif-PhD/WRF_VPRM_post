@@ -110,23 +110,28 @@ def extract_datetime_from_filename(filename):
 
 def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
 
-    gpp_pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
-    migli_path = "/scratch/c7071034/DATA/RECO_Migli"
+    run_Pmodel = False
+    if run_Pmodel:
+        gpp_pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
+        migli_path = "/scratch/c7071034/DATA/RECO_Migli"
     wrf_path_dx_str = wrf_path.split("_")[-1]
     output_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
+    d0X = "wrfout_d01"
+    if wrf_path_dx_str == "1km":
+        d0X = "wrfout_d02"
     start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
     end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
 
     # Define target locations (latitude, longitude)
     locations = [
-        {
-            "name": "CH-Oe2_ref",
-            "CO2_ID": "",
-            "lat": 47.2863,
-            "lon": 7.7343,
-            "pft": 6,  # "CRO",
-            "hgt_site": 452,
-        },
+        # {
+        #     "name": "CH-Oe2_ref",
+        #     "CO2_ID": "",
+        #     "lat": 47.2863,
+        #     "lon": 7.7343,
+        #     "pft": 6,  # "CRO",
+        #     "hgt_site": 452,
+        # },
         {
             "name": "CH-Dav_ref",
             "CO2_ID": "",
@@ -135,14 +140,14 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             "pft": 1,  # "ENF",
             "hgt_site": 1639,
         },
-        {
-            "name": "DE-Lkb_ref",
-            "CO2_ID": "",
-            "lat": 49.0996,
-            "lon": 13.3047,
-            "pft": 1,  # "ENF",
-            "hgt_site": 1308,
-        },
+        # {
+        #     "name": "DE-Lkb_ref",
+        #     "CO2_ID": "",
+        #     "lat": 49.0996,
+        #     "lon": 13.3047,
+        #     "pft": 1,  # "ENF",
+        #     "hgt_site": 1308,
+        # },
         {
             "name": "IT-Lav_ref",
             "CO2_ID": "",
@@ -175,30 +180,30 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             "pft": 7,  # "GRA",
             "hgt_site": 1550,
         },
-        {
-            "name": "IT-Tor_ref",
-            "CO2_ID": "",
-            "lat": 45.8444,
-            "lon": 7.5781,
-            "pft": 7,  # "GRA",
-            "hgt_site": 2160,
-        },
-        {
-            "name": "CH-Lae_ref",
-            "CO2_ID": "",
-            "lat": 47.4781,
-            "lon": 8.3644,
-            "pft": 3,  # "MF",
-            "hgt_site": 689,
-        },
-        {
-            "name": "CH-Oe2_std",
-            "CO2_ID": "_REF",
-            "lat": 47.2863,
-            "lon": 7.7343,
-            "pft": 6,  # "CRO",
-            "hgt_site": 452,
-        },
+        # {
+        #     "name": "IT-Tor_ref",
+        #     "CO2_ID": "",
+        #     "lat": 45.8444,
+        #     "lon": 7.5781,
+        #     "pft": 7,  # "GRA",
+        #     "hgt_site": 2160,
+        # },
+        # {
+        #     "name": "CH-Lae_ref",
+        #     "CO2_ID": "",
+        #     "lat": 47.4781,
+        #     "lon": 8.3644,
+        #     "pft": 3,  # "MF",
+        #     "hgt_site": 689,
+        # },
+        # {
+        #     "name": "CH-Oe2_std",
+        #     "CO2_ID": "_REF",
+        #     "lat": 47.2863,
+        #     "lon": 7.7343,
+        #     "pft": 6,  # "CRO",
+        #     "hgt_site": 452,
+        # },
         {
             "name": "CH-Dav_std",
             "CO2_ID": "_REF",
@@ -207,14 +212,14 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             "pft": 1,  # "ENF",
             "hgt_site": 1639,
         },
-        {
-            "name": "DE-Lkb_std",
-            "CO2_ID": "_REF",
-            "lat": 49.0996,
-            "lon": 13.3047,
-            "pft": 1,  # "ENF",
-            "hgt_site": 1308,
-        },
+        # {
+        #     "name": "DE-Lkb_std",
+        #     "CO2_ID": "_REF",
+        #     "lat": 49.0996,
+        #     "lon": 13.3047,
+        #     "pft": 1,  # "ENF",
+        #     "hgt_site": 1308,
+        # },
         {
             "name": "IT-Lav_std",
             "CO2_ID": "_REF",
@@ -247,30 +252,30 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             "pft": 7,  # "GRA",
             "hgt_site": 1550,
         },
-        {
-            "name": "IT-Tor_std",
-            "CO2_ID": "_REF",
-            "lat": 45.8444,
-            "lon": 7.5781,
-            "pft": 7,  # "GRA",
-            "hgt_site": 2160,
-        },
-        {
-            "name": "CH-Lae_std",
-            "CO2_ID": "_REF",
-            "lat": 47.4781,
-            "lon": 8.3644,
-            "pft": 3,  # "MF",
-            "hgt_site": 689,
-        },
-        {
-            "name": "CH-Oe2_tune",
-            "CO2_ID": "_2",
-            "lat": 47.2863,
-            "lon": 7.7343,
-            "pft": 6,  # "CRO",
-            "hgt_site": 452,
-        },
+        # {
+        #     "name": "IT-Tor_std",
+        #     "CO2_ID": "_REF",
+        #     "lat": 45.8444,
+        #     "lon": 7.5781,
+        #     "pft": 7,  # "GRA",
+        #     "hgt_site": 2160,
+        # },
+        # {
+        #     "name": "CH-Lae_std",
+        #     "CO2_ID": "_REF",
+        #     "lat": 47.4781,
+        #     "lon": 8.3644,
+        #     "pft": 3,  # "MF",
+        #     "hgt_site": 689,
+        # },
+        # {
+        #     "name": "CH-Oe2_tune",
+        #     "CO2_ID": "_2",
+        #     "lat": 47.2863,
+        #     "lon": 7.7343,
+        #     "pft": 6,  # "CRO",
+        #     "hgt_site": 452,
+        # },
         {
             "name": "CH-Dav_tune",
             "CO2_ID": "_2",
@@ -279,14 +284,14 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             "pft": 1,  # "ENF",
             "hgt_site": 1639,
         },
-        {
-            "name": "DE-Lkb_tune",
-            "CO2_ID": "_3",
-            "lat": 49.0996,
-            "lon": 13.3047,
-            "pft": 1,  # "ENF",
-            "hgt_site": 1308,
-        },
+        # {
+        #     "name": "DE-Lkb_tune",
+        #     "CO2_ID": "_3",
+        #     "lat": 49.0996,
+        #     "lon": 13.3047,
+        #     "pft": 1,  # "ENF",
+        #     "hgt_site": 1308,
+        # },
         {
             "name": "IT-Lav_tune",
             "CO2_ID": "_4",
@@ -319,22 +324,22 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             "pft": 7,  # "GRA",
             "hgt_site": 1550,
         },
-        {
-            "name": "IT-Tor_tune",
-            "CO2_ID": "_2",
-            "lat": 45.8444,
-            "lon": 7.5781,
-            "pft": 7,  # "GRA",
-            "hgt_site": 2160,
-        },
-        {
-            "name": "CH-Lae_tune",
-            "CO2_ID": "_2",
-            "lat": 47.4781,
-            "lon": 8.3644,
-            "pft": 3,  # "MF",
-            "hgt_site": 689,
-        },
+        # {
+        #     "name": "IT-Tor_tune",
+        #     "CO2_ID": "_2",
+        #     "lat": 45.8444,
+        #     "lon": 7.5781,
+        #     "pft": 7,  # "GRA",
+        #     "hgt_site": 2160,
+        # },
+        # {
+        #     "name": "CH-Lae_tune",
+        #     "CO2_ID": "_2",
+        #     "lat": 47.4781,
+        #     "lon": 8.3644,
+        #     "pft": 3,  # "MF",
+        #     "hgt_site": 689,
+        # },
     ]
 
     # Define the remapping dictionary for CORINE vegetation types
@@ -391,14 +396,20 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
         [f"{location['name']}_GPP_WRF" for location in locations]
         + [f"{location['name']}_RECO_WRF" for location in locations]
         + [f"{location['name']}_T2_WRF" for location in locations]
-        + [f"{location['name']}_GPP_Pmodel" for location in locations]
-        + [f"{location['name']}_RECO_Migli" for location in locations]
     )
+    if run_Pmodel:
+        columns = (
+            [f"{location['name']}_GPP_WRF" for location in locations]
+            + [f"{location['name']}_RECO_WRF" for location in locations]
+            + [f"{location['name']}_T2_WRF" for location in locations]
+            + [f"{location['name']}_GPP_Pmodel" for location in locations]
+            + [f"{location['name']}_RECO_Migli" for location in locations]
+        )
 
     df_out = pd.DataFrame(columns=columns)
     file_list = [
         f
-        for f in sorted(glob.glob(os.path.join(wrf_path, "wrfout_d01*")))
+        for f in sorted(glob.glob(os.path.join(wrf_path, f"{d0X}*")))
         if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
     ]
 
@@ -418,24 +429,28 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             IVGTYP[:, :]
         )  # Create a new array for the simplified vegetation categories
         dx = (xlat[0, 0] - xlat[1, 0]) * 111
-        radius = dx * 10
+        radius = dx * 20
 
-        # find file in migli_path which ends with date_time
-        reco_migli_file = [
-            f
-            for f in sorted(glob.glob(os.path.join(migli_path, "reco_migli*")))
-            if file_end in f
-        ][0]
-        reco_migli = xr.open_dataset(reco_migli_file)
-        reco_migli = reco_migli["RECO_Migli"].values
-        # find file in gpp which ends with date_time
-        gpp_pmodel_file = [
-            f
-            for f in sorted(
-                glob.glob(os.path.join(gpp_pmodel_path, f"gpp_pmodel_{subday}*"))
-            )
-            if file_end in f
-        ][0]
+        if run_Pmodel:
+            # find file in migli_path which ends with date_time
+            reco_migli_files = [
+                f
+                for f in sorted(glob.glob(os.path.join(migli_path, "reco_migli*")))
+                if file_end in f
+            ]
+            if not reco_migli_files:
+                raise FileNotFoundError(f"No reco_migli file found for {file_end}")
+            reco_migli_file = reco_migli_files[0]
+            reco_migli = xr.open_dataset(reco_migli_file)
+            reco_migli = reco_migli["RECO_Migli"].values
+            # find file in gpp which ends with date_time
+            gpp_pmodel_file = [
+                f
+                for f in sorted(
+                    glob.glob(os.path.join(gpp_pmodel_path, f"gpp_pmodel_{subday}*"))
+                )
+                if file_end in f
+            ][0]
         # TODO: run P-Model for point timeseries data not from area data.
         # Test for standard P-Model
         # gpp_pmodel_point = pModel_subdaily_area(
@@ -451,8 +466,8 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
         #     half_wdth,
         # )
 
-        gpp_pmodel = xr.open_dataset(gpp_pmodel_file)
-        gpp_pmodel = gpp_pmodel["GPP_Pmodel"].values
+            gpp_pmodel = xr.open_dataset(gpp_pmodel_file)
+            gpp_pmodel = gpp_pmodel["GPP_Pmodel"].values
 
         # Initialize lists to store data for the current timestep
         data_row = {col: None for col in df_out.columns}  # Map columns to values
@@ -468,15 +483,17 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
                 gee = get_int_var(lat_target, lon_target, xlat, xlon, WRF_gee) / 3600
                 res = get_int_var(lat_target, lon_target, xlat, xlon, WRF_res) / 3600
                 t2 = get_int_var(lat_target, lon_target, xlat, xlon, WRF_T2)
-                gpp_p = get_int_var(lat_target, lon_target, xlat, xlon, gpp_pmodel)
-                reco_m = get_int_var(lat_target, lon_target, xlat, xlon, reco_migli)
+                if run_Pmodel:
+                    gpp_p = get_int_var(lat_target, lon_target, xlat, xlon, gpp_pmodel)
+                    reco_m = get_int_var(lat_target, lon_target, xlat, xlon, reco_migli)
 
                 # Assign values to their respective columns
                 data_row[f"{location['name']}_GPP_WRF"] = gee
                 data_row[f"{location['name']}_RECO_WRF"] = res
                 data_row[f"{location['name']}_T2_WRF"] = t2
-                data_row[f"{location['name']}_GPP_Pmodel"] = gpp_p
-                data_row[f"{location['name']}_RECO_Migli"] = reco_m
+                if run_Pmodel:
+                    data_row[f"{location['name']}_GPP_Pmodel"] = gpp_p
+                    data_row[f"{location['name']}_RECO_Migli"] = reco_m
             elif method == "NN":
                 # Get nearest neighbour of GEE, RES, and T2 for the current location and append to the row
 
@@ -511,12 +528,13 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
                 data_row[f"{location['name']}_T2_WRF"] = WRF_T2[
                     grid_idx[0], grid_idx[1]
                 ]
-                data_row[f"{location['name']}_GPP_Pmodel"] = gpp_pmodel[
-                    grid_idx[0], grid_idx[1]
-                ]
-                data_row[f"{location['name']}_RECO_Migli"] = reco_migli[
-                    grid_idx[0], grid_idx[1]
-                ]
+                if run_Pmodel:
+                    data_row[f"{location['name']}_GPP_Pmodel"] = gpp_pmodel[
+                        grid_idx[0], grid_idx[1]
+                    ]
+                    data_row[f"{location['name']}_RECO_Migli"] = reco_migli[
+                        grid_idx[0], grid_idx[1]
+                    ]
 
             elif method == "NNhgt":
                 # Get nearest neighbour of GEE, RES, and T2 for the current location and append to the row
@@ -552,17 +570,21 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
                 data_row[f"{location['name']}_T2_WRF"] = WRF_T2[
                     grid_idx[0], grid_idx[1]
                 ]
-                data_row[f"{location['name']}_GPP_Pmodel"] = gpp_pmodel[
-                    grid_idx[0], grid_idx[1]
-                ]
-                data_row[f"{location['name']}_RECO_Migli"] = reco_migli[
-                    grid_idx[0], grid_idx[1]
-                ]
+                if run_Pmodel:
+                    data_row[f"{location['name']}_GPP_Pmodel"] = gpp_pmodel[
+                        grid_idx[0], grid_idx[1]
+                    ]
+                    data_row[f"{location['name']}_RECO_Migli"] = reco_migli[
+                        grid_idx[0], grid_idx[1]
+                    ]
 
         # Append the current timestep data as a new row in the DataFrame
         temp_df_out = pd.DataFrame([data_row])
-        df_out = pd.concat([df_out, temp_df_out], ignore_index=True)
-        # nc_fid1.close()
+        # Filter out empty or all-NA DataFrames before concatenation to avoid FutureWarning
+        frames_to_concat = [df for df in [df_out, temp_df_out] if not df.empty and not df.isna().all(axis=None)]
+        if frames_to_concat:
+            df_out = pd.concat(frames_to_concat, ignore_index=True)
+        nc_fid1.close()
 
     # Set the time as the index of the DataFrame
     df_out.index = [extract_datetime_from_filename(f) for f in file_list]
@@ -576,9 +598,6 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
         )
     )
     # write another csv file with the distances but use only the _ref sites
-    df_out_dist = pd.DataFrame(
-        columns=["name", "dist", "hgt_wrf", "lat_wrf", "lon_wrf", "pft"]
-    )
     dist_rows = []
     for loc in locations:
         if "ref" in loc["name"]:
@@ -592,7 +611,7 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
                     "pft": loc["pft"],
                 }
             )
-    df_out_dist = pd.concat([df_out_dist, pd.DataFrame(dist_rows)], ignore_index=True)
+    df_out_dist = pd.DataFrame(dist_rows, columns=["name", "dist", "hgt_wrf", "lat_wrf", "lon_wrf", "pft"])
     df_out_dist.to_csv(
         os.path.join(
             output_dir,
@@ -633,13 +652,14 @@ def main():
         subday = args.subday
     else:  # to run locally for single cases
         subday = ""  # "subdailyC3_" or "" for daily data
-        start_date = "2012-07-15 00:00:00"
-        end_date = "2012-07-30 00:00:00"
+        start_date = "2012-07-27 00:00:00"
+        end_date = "2012-07-28 00:00:00"
         wrf_paths = [
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_07_27_1km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_07_27_3km",
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km",
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241227_183215_ALPS_54km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250529_123825_ALPS_54km",
         ]
         method = "NNhgt"  # "NN" nearest neighbour, NNhgt or "interpolated"
     for wrf_path in wrf_paths:
