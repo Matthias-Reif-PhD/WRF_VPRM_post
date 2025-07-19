@@ -1,29 +1,42 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 
-start_date = "2012-07-02 00:00:00"
-end_date = "2012-07-03 00:00:00"
+start_date = "2012-06-01 00:00:00"
+end_date = "2012-09-01 00:00:00"
 STD_TOPO = 50
 plot_lt = False
 ref_sim = "" # "_REF" to use REF simulation or "" for tuned values
 run_Pmodel = False
+subdaily = ""  # "_subdailyC3" or ""
+
 if run_Pmodel:
     columns = ["RECO_migli", "GPP_pmodel", "NEE_PM", "GPP", "RECO", "NEE", "T2"]
+    units = [
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [°C]",
+    ]
 else:
-    columns = ["GPP", "RECO", "NEE", "T2"]
-subdaily = ""  # "_subdailyC3" or ""
-units = [
-    " [µmol m² s⁻¹]",
-    " [µmol m² s⁻¹]",
-    " [µmol m² s⁻¹]",
-    " [µmol m² s⁻¹]",
-    " [µmol m² s⁻¹]",
-    " [µmol m² s⁻¹]",
-    " [°C]",
-]
+    columns = [ "GPP",  "RECO", "NEE", "T2" ]
+    units = [
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [µmol m² s⁻¹]",
+        " [°C]",
+    ]
+
+
+
+        
+convert_to_gC = 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
 # Save to CSV
 merged_df_gt = pd.read_csv(
     f"{csv_folder}timeseries_domain_averaged{ref_sim}{subdaily}_std_topo_gt_{STD_TOPO}_{start_date}_{end_date}.csv"
@@ -74,6 +87,11 @@ merged_df_gt["hour"] = merged_df_gt.index.hour
 numeric_columns = merged_df_gt.select_dtypes(include=["number"]).columns
 hourly_avg = merged_df_gt[numeric_columns].groupby("hour").mean()
 
+# apply .resample("h").interpolate("linear") to all CAMS cols
+for col in merged_df_gt.columns:
+    if "CAMS" in col:
+        merged_df_gt[col] = merged_df_gt[col].resample("h").interpolate("linear")
+
 if plot_lt:
     merged_df_lt["datetime"] = pd.to_datetime(
         merged_df_lt["Unnamed: 0"], format="%Y-%m-%d %H:%M:%S"
@@ -95,35 +113,34 @@ resolution_colors = {
 
 # Create separate plots for each variable
 for column, unit in zip(columns, units):
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(15, 7))
     # Extract data for the current variable across all resolutions
     for res in resolutions:
-        # Extract the series
-        if (
-            f"{column}_{res}" == "GPP_pmodel_CAMS"
-            or f"{column}_{res}" == "RECO_migli_CAMS"
-            or f"{column}_{res}" == "NEE_PM_CAMS"
-        ):
-            cams_column = column.split("_")[0] + "_CAMS"
-            data_series = merged_df_gt[cams_column]
-            if plot_lt:
-                data_series_lt = merged_df_lt[cams_column]
-        else:
-            data_series = merged_df_gt[f"{column}_{res}"]
-            if plot_lt:
-                data_series_lt = merged_df_lt[f"{column}_{res}"]
-        # Skip NaN values for CAMS data during plotting
-        if res == "CAMS":
-            data_series = data_series.dropna()
-            if plot_lt:
-                data_series_lt = data_series_lt.dropna()
+        # if run_Pmodel:
+            # Extract the series
+            # if (
+            #     f"{column}_{res}" == "GPP_pmodel_CAMS"
+            #     or f"{column}_{res}" == "RECO_migli_CAMS"
+            #     or f"{column}_{res}" == "NEE_PM_CAMS"
+            # ):
+            #     cams_column = column.split("_")[0] + "_CAMS"
+            #     data_series = merged_df_gt[cams_column]
+            #     # data_series = data_series.resample("h").interpolate("linear")
+            #     if plot_lt:
+            #         data_series_lt = merged_df_lt[cams_column]
+            # else:
+            #     data_series = merged_df_gt[f"{column}_{res}"]
+            #     if plot_lt:
+            #         data_series_lt = merged_df_lt[f"{column}_{res}"]
+        data_series = merged_df_gt[f"{column}_{res}"]
+
         if column != "T2":
             # hourly_avg = merged_df_gt[numeric_columns].groupby("hour").mean()
-            gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day = data_series.mean() * convert_to_gC  # gC m^-2 d^-1
             label_i = f"{column} {res} > std {STD_TOPO} mean={gC_per_day:.2f} gC/m²/day"
             if plot_lt:
                 gC_per_day_lt = (
-                    data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+                    data_series_lt.mean() * convert_to_gC
                 )  # gC m^-2 d^-1
                 label_i_lt = (
                     f"{column} {res} < std {STD_TOPO} mean={gC_per_day_lt:.2f} gC/m²/day"
@@ -134,35 +151,67 @@ for column, unit in zip(columns, units):
             if plot_lt:
                 sum_over_time_lt = data_series_lt.mean()
                 label_i_lt = f"{column}{ref_sim} {res} < std {STD_TOPO}; mean={sum_over_time_lt:.2f}"
-        # Plot the data
-        plt.plot(
-            data_series.index,
-            data_series,
-            label=label_i,
-            linestyle="-",
-            color=resolution_colors[res],
-        )
-        if plot_lt:
-            plt.plot(
-                data_series_lt.index,
-                data_series_lt,
-                label=label_i_lt,
-                linestyle=":",
-                color=resolution_colors[res],
-            )
-    # Customize the plot
-    plt.title(f"Comparison of {column} Across resolutions")
-    plt.xlabel("Time")
-    plt.ylabel(column + " " + unit)
-    plt.legend()
-    plt.grid(True)
+                
+        gap_size = 1
+        current_x = 0
+        xticks = []
+        xticklabels = []
 
-    # Show the plot
+        # Filter out days with all zero/NaN values
+        grouped = data_series.groupby(data_series.index.date)
+        valid_days = [(date, group) for date, group in grouped if not group.dropna().eq(0).all()]
+
+        for i, (date, group) in enumerate(valid_days):
+            
+            y = group.values
+            x = np.arange(len(y)) + current_x
+            plt.plot(x, y, linestyle='-', linewidth=1.5, color=resolution_colors[res])
+            # Add tick at 00:00 of the day
+            xticks.append(current_x)
+            xticklabels.append(str(date))
+
+            # Add shaded area between valid days
+            if i < len(valid_days) - 1:
+                gap_start = current_x + len(y)
+                gap_end = gap_start + gap_size
+                plt.axvspan(gap_start, gap_end, color='lightgray', alpha=0.5)
+
+            # Update x offset
+            current_x += len(y) + gap_size
+            print(f"current_x: {current_x}, len(y): {len(y)}, date: {date}")
+        # add label below the x-axis
+        plt.plot([], [], label=label_i, color=resolution_colors[res], linestyle="-")
+        del current_x
+        # del grouped
+        # del valid_days
+        # del y
+        # del x    
+            
+    # plt.show()
+
+        # if plot_lt:
+        #     plt.plot(
+        #         data_series_lt.index,
+        #         data_series_lt,
+        #         label=label_i_lt,
+        #         linestyle=":",
+        #         color=resolution_colors[res],
+        #     )
+
+    # Finalize axis
+    plt.xticks(xticks, xticklabels, ha='left')
+    plt.title(f"Comparison of {column} Across Resolutions")
+    plt.xlabel("date")
+    plt.ylabel(f"{column} {unit}")
+    plt.grid(True)
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3)
     plt.tight_layout()
     plotname = f"{outfolder}timeseries_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
     plt.savefig(plotname)
+    # plt.show()
     plt.close()
+
 
     resolutions_diff = ["54km", "27km", "9km", "3km"]
 
@@ -173,12 +222,12 @@ for column, unit in zip(columns, units):
         if plot_lt:
             diff_lt = merged_df_lt[f"{column}_{res}"] - merged_df_lt[f"{column}_1km"]
         if column != "T2":
-            gC_per_day = diff_gt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day = diff_gt.mean() * convert_to_gC  # gC m^-2 d^-1
             label_gt = (
                 f"{column} {res}-1km > std {STD_TOPO} mean={gC_per_day:.2f} gC/m²/day"
             )
             if plot_lt:
-                gC_per_day_lt = diff_lt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+                gC_per_day_lt = diff_lt.mean() * convert_to_gC  # gC m^-2 d^-1
                 label_lt = f"{column} {res}-1km < std {STD_TOPO} mean={gC_per_day_lt:.2f} gC/m²/day"
         else:
             gC_per_day = diff_gt.mean()
@@ -186,30 +235,61 @@ for column, unit in zip(columns, units):
             if plot_lt:
                 gC_per_day_lt = diff_lt.mean()
                 label_lt = f"{column}{ref_sim} {res}-1km < std {STD_TOPO}; mean={gC_per_day_lt:.2f}"
-        plt.plot(
-            diff_gt.index,
-            diff_gt,
-            label=label_gt,
-            linestyle="-",
-            color=resolution_colors[res],
-        )
-        if plot_lt:
-            plt.plot(
-                diff_lt.index,
-                diff_lt,
-                label=label_lt,
-                linestyle=":",
-                color=resolution_colors[res],
-            )
+        # plt.plot(
+        #     diff_gt.index,
+        #     diff_gt,
+        #     label=label_gt,
+        #     linestyle="-",
+        #     color=resolution_colors[res],
+        # )
+        # if plot_lt:
+        #     plt.plot(
+        #         diff_lt.index,
+        #         diff_lt,
+        #         label=label_lt,
+        #         linestyle=":",
+        #         color=resolution_colors[res],
+        #     )
 
-    # Customize the plot
+                
+        gap_size = 1
+        current_x = 0
+        xticks = []
+        xticklabels = []
+
+        # Filter out days with all zero/NaN values
+        grouped = diff_gt.groupby(diff_gt.index.date)
+        valid_days = [(date, group) for date, group in grouped if not group.dropna().eq(0).all()]
+
+        for i, (date, group) in enumerate(valid_days):
+            y = group.values
+            x = np.arange(len(y)) + current_x
+
+            # Plot the data line
+            plt.plot(x, y, linestyle='-', linewidth=1.5, color=resolution_colors[res])
+
+            # Add tick at 00:00 of the day
+            xticks.append(current_x)
+            xticklabels.append(str(date))
+
+            # Add shaded area between valid days
+            if i < len(valid_days) - 1:
+                gap_start = current_x + len(y)
+                gap_end = gap_start + gap_size
+                plt.axvspan(gap_start, gap_end, color='lightgray', alpha=0.5)
+
+            # Update x offset
+            current_x += len(y) + gap_size
+        # add label below the x-axis
+        plt.plot([], [], label=label_i, color=resolution_colors[res], linestyle="-")
+        
+    # Finalize axis
+    plt.xticks(xticks, xticklabels, ha='left')
     plt.title(f"Differences of coarse(dx)-1km of {column} across resolutions")
-    plt.xlabel("Time")
-    plt.ylabel(column + " " + unit)
-    plt.legend()
+    plt.xlabel("date")
+    plt.ylabel(f"{column} {unit}")
     plt.grid(True)
-
-    # Show the plot
+    plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
     plt.tight_layout()
     plotname = f"{outfolder}timeseries_diff_of_dx-1km_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
@@ -242,11 +322,11 @@ for column, unit in zip(columns, units):
             if plot_lt:
                 data_series_lt = data_series_lt.dropna()
         if column != "T2":  # Daily mean
-            gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day = data_series.mean() * convert_to_gC  # gC m^-2 d^-1
             label_i = f"{column} {res} > std {STD_TOPO} with {gC_per_day:.2f} gC/m²/day"
             if plot_lt:
                 gC_per_day_lt = (
-                    data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+                    data_series_lt.mean() * convert_to_gC
                 )  # gC m^-2 d^-1
                 label_i_lt = (
                     f"{column} {res} < std {STD_TOPO} with {gC_per_day_lt:.2f} gC/m²/day"
@@ -282,8 +362,6 @@ for column, unit in zip(columns, units):
     plt.ylabel(column + " " + unit)
     plt.legend()
     plt.grid(True)
-
-    # Show the plot
     plt.tight_layout()
     plotname = f"{outfolder}timeseries_hourly_{column}_domain_averaged{ref_sim}{subdaily}_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
     print(f"saved plot: {plotname}")
@@ -299,12 +377,12 @@ for column, unit in zip(columns, units):
         if plot_lt:
             diff_lt = hourly_avg_lt[f"{column}_{res}"] - hourly_avg_lt[f"{column}_1km"]
         if column != "T2":
-            gC_per_day = diff_gt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+            gC_per_day = diff_gt.mean() * convert_to_gC  # gC m^-2 d^-1
             label_gt = (
                 f"{column} {res}-1km > std {STD_TOPO}; mean={gC_per_day:.2f} gC/m²/day"
             )
             if plot_lt:
-                gC_per_day_lt = diff_lt.mean() * 60 * 60 * 24 * 1e-6 * 12  # gC m^-2 d^-1
+                gC_per_day_lt = diff_lt.mean() * convert_to_gC  # gC m^-2 d^-1
                 label_lt = f"{column} {res}-1km < std {STD_TOPO}; mean={gC_per_day_lt:.2f} gC/m²/day"
         else:
             sum_over_time_gt = diff_gt.mean()
@@ -355,11 +433,11 @@ if run_Pmodel:
         data_series = hourly_avg[f"GPP_{res}"] - hourly_avg[f"GPP_pmodel_{res}"]
         if plot_lt:
             data_series_lt = hourly_avg_lt[f"GPP_{res}"] - hourly_avg_lt[f"GPP_pmodel_{res}"]
-        gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12
+        gC_per_day = data_series.mean() * convert_to_gC
         label_i = f"{res}{ref_sim} > std {STD_TOPO}; mean={gC_per_day:.2f}"
         if plot_lt:
 
-            gC_per_day_lt = data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+            gC_per_day_lt = data_series_lt.mean() * convert_to_gC
             label_i_lt = f"{res}{ref_sim} < std {STD_TOPO}; mean={gC_per_day_lt:.2f}"
 
         plt.plot(
@@ -399,10 +477,10 @@ if run_Pmodel:
         data_series = hourly_avg[f"RECO_{res}"] - hourly_avg[f"RECO_migli_{res}"]
         if plot_lt:
             data_series_lt = hourly_avg_lt[f"RECO_{res}"] - hourly_avg_lt[f"RECO_migli_{res}"]
-        gC_per_day = data_series.mean() * 60 * 60 * 24 * 1e-6 * 12
+        gC_per_day = data_series.mean() * convert_to_gC
         label_i = f"{res}{ref_sim} > std {STD_TOPO}; mean={gC_per_day:.2f} gC/m²/day"
         if plot_lt:
-            gC_per_day_lt = data_series_lt.mean() * 60 * 60 * 24 * 1e-6 * 12
+            gC_per_day_lt = data_series_lt.mean() * convert_to_gC
             label_i_lt = f"{res}{ref_sim} < std {STD_TOPO}; mean={gC_per_day_lt:.2f} gC/m²/day"
         plt.plot(
             hourly_avg.index,

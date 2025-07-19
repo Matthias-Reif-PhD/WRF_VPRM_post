@@ -35,19 +35,19 @@ def haversine(lat1, lon1, lat2, lon2):
 
 
 def proj_on_finer_WRF_grid(
-    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_3km
+    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_1km
 ):
     proj_var = griddata(
         (lats_coarse.flatten(), lons_coarse.flatten()),
         var_coarse.flatten(),
         (lats_fine, lons_fine),
         method="linear",
-    ).reshape(WRF_var_3km.shape)
+    ).reshape(WRF_var_1km.shape)
     return proj_var
 
 
 def proj_CAMS_on_WRF_grid(
-    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_3km
+    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_1km
 ):
     # Corrected meshgrid order
     lats_coarse_2d, lons_coarse_2d = np.meshgrid(lats_coarse, lons_coarse)
@@ -63,13 +63,13 @@ def proj_CAMS_on_WRF_grid(
     # Perform interpolation
     proj_var = griddata(
         points_coarse, var_coarse_reversed.flatten(), points_fine, method="nearest"
-    ).reshape(WRF_var_3km.shape)
+    ).reshape(WRF_var_1km.shape)
 
     return proj_var
 
 
 def proj_on_WRF_grid(
-    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_3km
+    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_1km
 ):
     # Corrected meshgrid order
     lats_coarse_2d, lons_coarse_2d = np.meshgrid(lats_coarse, lons_coarse)
@@ -81,7 +81,7 @@ def proj_on_WRF_grid(
     # Perform interpolation
     proj_var = griddata(
         points_coarse, var_coarse.flatten(), points_fine, method="nearest"
-    ).reshape(WRF_var_3km.shape)
+    ).reshape(WRF_var_1km.shape)
 
     return proj_var
 
@@ -157,24 +157,24 @@ labels_vprm_short = [
 ################################# INPUT ##############################################
 plot_coeff = True
 plotting_scatter = False
-plotting_scatter_all = False
-start_date = "2012-07-01 00:00:00"
-end_date = "2012-07-30 00:00:00"
-PFTs = [1, 2, 3, 6, 7]  # 1: ENF, 2: DBF, 3: MF, 6: CRO, 7: GRA
+plotting_scatter_all = True # TODO: fix this need to be false currently. 
+start_date = "2012-06-01 00:00:00"
+end_date = "2012-09-01 00:00:00"
+PFTs = [7]  # 1: ENF, 2: DBF, 3: MF, 6: CRO, 7: GRA
 T_bin_size = 2
-hour_start = 5
-hour_end = 18
-T_ref_min = 0
-T_ref_max = 36
+hour_start = 6
+hour_end = 17
+T_bin_size = 1
+T_ref_min = 10
+T_ref_max = 26
 STD_TOPO = 50
-STD_TOPO_flags = [
-    "gt"
-]  # "lt" lower than or "gt" greater than STD_TOPO of both ["lt", "gt"]
-ref_sim = "_REF" # "_REF" to use REF simulation or "" for tuned values
+STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
+ref_sim = "" # "_REF" to use REF simulation or "" for tuned values
 subdaily = ""  # "_subdailyC3" or ""
-coarse_domains = ["27km"]  # "54km", "27km", "9km"
+coarse_domains = ["54km"] # , "27km", "9km", "3km"
 
 wrf_files = "wrfout_d01*"
+wrf_files_1km = "wrfout_d02*"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
@@ -212,45 +212,57 @@ end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
 ############################### start the looop #############################################
 for PFT_i in PFTs:
     for coarse_domain in coarse_domains:
-        if coarse_domain == "9km":
-            wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km"
+        if coarse_domain == "3km":
+            wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km"
+        elif coarse_domain == "9km":
+            wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km"
         elif coarse_domain == "27km":
             wrf_path_i = (
-                "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km"
+                "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km"
             )
         elif coarse_domain == "54km":
             wrf_path_i = (
-                "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241227_183215_ALPS_54km"
+                "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km"
             )
 
         wrf_paths = [
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250107_155336_ALPS_3km",
+            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
             wrf_path_i,
         ]
 
         file_list = [
             os.path.basename(f)  # Extract only the filename
-            for f in sorted(glob.glob(os.path.join(wrf_paths[0], wrf_files)))
+            for f in sorted(glob.glob(os.path.join(wrf_paths[1], wrf_files)))
+            if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
+        ]
+        file_list_1km = [
+            os.path.basename(f)  # Extract only the filename
+            for f in sorted(glob.glob(os.path.join(wrf_paths[0], wrf_files_1km)))
             if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
         ]
 
-        file_list = [
+        file_list_hour = [
             f
             for f in file_list
+            if hour_start <= extract_datetime_from_filename(f).hour <= hour_end
+        ]
+        file_list_hour_1km = [
+            f
+            for f in file_list_1km
             if hour_start <= extract_datetime_from_filename(f).hour <= hour_end
         ]
 
         timestamps = [extract_datetime_from_filename(f) for f in file_list]
         time_index = pd.to_datetime(timestamps)
 
-        diff_to_3km_4D = []
+        diff_to_1km_4D = []
         T2_coarse_domain_4D = []
 
         # set standard deviation of topography
 
         for STD_TOPO_flag in STD_TOPO_flags:
 
-            for wrf_file in file_list:
+            for wrf_file,wrf_file_1km in zip(file_list_hour,file_list_hour_1km):
                 ini_switch = True
                 time = extract_datetime_from_filename(wrf_file)
                 print("processing ", time)
@@ -267,45 +279,46 @@ for PFT_i in PFTs:
                     i = 0
                     # Loop through the files for the timestep
                     # for nc_f1 in file_list_27km:
+                    # in wrf_file, replace d02 with d01 for all coarse domains
+                    nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_1km), "r")
                     nc_fid_coarse_domain = nc.Dataset(
                         os.path.join(wrf_paths[1], wrf_file), "r"
                     )
-                    nc_fid3km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file), "r")
-
-                    times_variable = nc_fid3km.variables["Times"]
+                    
+                    times_variable = nc_fid1km.variables["Times"]
                     start_date_bytes = times_variable[0, :].tobytes()
                     start_date_str = start_date_bytes.decode("utf-8")
-                    lats_fine = nc_fid3km.variables["XLAT"][0, :, :]
-                    lons_fine = nc_fid3km.variables["XLONG"][0, :, :]
-                    landmask = nc_fid3km.variables["LANDMASK"][0, :, :]
-                    hgt_3km = nc_fid3km.variables["HGT"][0, :, :]
-                    pft_3km = nc_fid3km.variables["IVGTYP"][0, :, :]
-                    pft_3km = np.vectorize(corine_to_vprm.get)(
-                        pft_3km[:, :]
+                    lats_fine = nc_fid1km.variables["XLAT"][0, :, :]
+                    lons_fine = nc_fid1km.variables["XLONG"][0, :, :]
+                    landmask = nc_fid1km.variables["LANDMASK"][0, :, :]
+                    hgt_1km = nc_fid1km.variables["HGT"][0, :, :]
+                    pft_1km = nc_fid1km.variables["IVGTYP"][0, :, :]
+                    pft_1km = np.vectorize(corine_to_vprm.get)(
+                        pft_1km[:, :]
                     )  # Convert to VPRM PFTs
-                    pft_3km_mask = np.where(pft_3km == PFT_i, True, False)
+                    pft_1km_mask = np.where(pft_1km == PFT_i, True, False)
 
                     land_mask = landmask == 1
 
                     if WRF_var == "T2":
-                        WRF_var_3km = nc_fid3km.variables[WRF_var][0, :, :] - WRF_factor
+                        WRF_var_1km = nc_fid1km.variables[WRF_var][0, :, :] - WRF_factor
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables[WRF_var][0, :, :]
                             - WRF_factor
                         )
                     elif WRF_var == "NEE":
-                        WRF_var_3km = (
-                            nc_fid3km.variables["EBIO_GEE"][0, 0, :, :]
-                            + nc_fid3km.variables["EBIO_RES"][0, 0, :, :]
+                        WRF_var_1km = (
+                            nc_fid1km.variables["EBIO_GEE"][0, 0, :, :]
+                            + nc_fid1km.variables["EBIO_RES"][0, 0, :, :]
                         ) * WRF_factor
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables["EBIO_GEE"][0, 0, :, :]
                             + nc_fid_coarse_domain.variables["EBIO_RES"][0, 0, :, :]
                         ) * WRF_factor
                     elif WRF_var == "NEE_REF":
-                        WRF_var_3km = (
-                            nc_fid3km.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
-                            + nc_fid3km.variables["EBIO_RES" + ref_sim][0, 0, :, :]
+                        WRF_var_1km = (
+                            nc_fid1km.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
+                            + nc_fid1km.variables["EBIO_RES" + ref_sim][0, 0, :, :]
                         ) * WRF_factor
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
@@ -320,7 +333,7 @@ for PFT_i in PFTs:
                         gpp_pmodel_coarse_domain = xr.open_dataset(
                             f"{pmodel_path}gpp_pmodel{subdaily}_{coarse_domain}_{time_str}.nc"
                         )
-                        WRF_var_3km = gpp_pmodel_3km["GPP_Pmodel"].to_numpy()
+                        WRF_var_1km = gpp_pmodel_3km["GPP_Pmodel"].to_numpy()
                         WRF_var_coarse_domain = gpp_pmodel_coarse_domain[
                             "GPP_Pmodel"
                         ].to_numpy()
@@ -333,7 +346,7 @@ for PFT_i in PFTs:
                         reco_migli_coarse_domain = xr.open_dataset(
                             f"{migli_path}reco_migliavacca_subdailyC3_{coarse_domain}_{time_str}.nc"
                         )
-                        WRF_var_3km = reco_migli_3km["RECO_Migli"].to_numpy()
+                        WRF_var_1km = reco_migli_3km["RECO_Migli"].to_numpy()
                         WRF_var_coarse_domain = reco_migli_coarse_domain[
                             "RECO_Migli"
                         ].to_numpy()
@@ -351,7 +364,7 @@ for PFT_i in PFTs:
                         reco_migli_coarse_domain = xr.open_dataset(
                             f"{migli_path}reco_migliavacca_subdailyC3_{coarse_domain}_{time_str}.nc"
                         )
-                        WRF_var_3km = (
+                        WRF_var_1km = (
                             reco_migli_3km["RECO_Migli"].to_numpy()
                             - gpp_pmodel_3km["GPP_Pmodel"].to_numpy()
                         )
@@ -360,8 +373,8 @@ for PFT_i in PFTs:
                             - gpp_pmodel_coarse_domain["GPP_Pmodel"].to_numpy()
                         )
                     else:
-                        WRF_var_3km = (
-                            nc_fid3km.variables[WRF_var][0, 0, :, :] * WRF_factor
+                        WRF_var_1km = (
+                            nc_fid1km.variables[WRF_var][0, 0, :, :] * WRF_factor
                         )
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables[WRF_var][0, 0, :, :]
@@ -384,7 +397,7 @@ for PFT_i in PFTs:
                         WRF_var_coarse_domain,
                         lats_fine,
                         lons_fine,
-                        WRF_var_3km,
+                        WRF_var_1km,
                     )
                     proj_hgt_coarse_domain = proj_on_finer_WRF_grid(
                         lats_coarse_domain,
@@ -392,7 +405,7 @@ for PFT_i in PFTs:
                         hgt_coarse_domain,
                         lats_fine,
                         lons_fine,
-                        WRF_var_3km,
+                        WRF_var_1km,
                     )
                     proj_stdh_topo_coarse_domain = proj_on_finer_WRF_grid(
                         lats_coarse_domain,
@@ -400,7 +413,7 @@ for PFT_i in PFTs:
                         stdh_topo_coarse_domain,
                         lats_fine,
                         lons_fine,
-                        WRF_var_3km,
+                        WRF_var_1km,
                     )
                     pft_coarse_domain = nc_fid_coarse_domain.variables["IVGTYP"][
                         0, :, :
@@ -414,7 +427,7 @@ for PFT_i in PFTs:
                         pft_coarse_domain,
                         lats_fine,
                         lons_fine,
-                        WRF_var_3km,
+                        WRF_var_1km,
                     )
                     pft_coarse_domain_mask = np.where(
                         proj_pft_coarse_domain == PFT_i, True, False
@@ -424,10 +437,10 @@ for PFT_i in PFTs:
                         stdh_mask = proj_stdh_topo_coarse_domain >= STD_TOPO
                     elif STD_TOPO_flag == "lt":
                         stdh_mask = proj_stdh_topo_coarse_domain < STD_TOPO
-                    mask = land_mask * stdh_mask * pft_coarse_domain_mask * pft_3km_mask
+                    mask = land_mask * stdh_mask * pft_coarse_domain_mask * pft_1km_mask
 
-                    WRF_diff = proj_WRF_var_coarse_domain[mask] - WRF_var_3km[mask]
-                    hgt_diff = (proj_hgt_coarse_domain[mask] - hgt_3km[mask]) / 1000
+                    WRF_diff = proj_WRF_var_coarse_domain[mask] - WRF_var_1km[mask]
+                    hgt_diff = (proj_hgt_coarse_domain[mask] - hgt_1km[mask]) / 1000
 
                     # Plotting
                     if plotting_scatter:
@@ -435,17 +448,14 @@ for PFT_i in PFTs:
                             fig, ax = plt.subplots(figsize=(8, 6))
 
                             idx = np.isfinite(WRF_diff) & np.isfinite(hgt_diff)
-                            coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
-                            x_poly = np.linspace(
-                                hgt_diff[idx].min(), hgt_diff[idx].max()
-                            )
-                            y_poly = np.polyval(coeff, x_poly)
-                            # calculate the R2 and the RMSE value
+                            #coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
+                            coeff, _, _, _ = np.linalg.lstsq(hgt_diff[idx][:, np.newaxis], WRF_diff[idx], rcond=None)
+                            x_poly = np.linspace(hgt_diff[idx].min(), hgt_diff[idx].max())
+                            y_poly = coeff[0] * x_poly
 
+                            # calculate the R2 and the RMSE value
                             r2 = r2_score(WRF_diff[idx], hgt_diff[idx])
-                            rmse = np.sqrt(
-                                mean_squared_error(WRF_diff[idx], hgt_diff[idx])
-                            )
+                            rmse = np.sqrt(mean_squared_error(WRF_diff[idx], hgt_diff[idx]))
 
                             ax.text(
                                 0.05,
@@ -461,16 +471,14 @@ for PFT_i in PFTs:
                                 ),
                             )
 
-                            ax.scatter(
-                                hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5
-                            )
+                            ax.scatter(hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5)
                             ax.plot(
                                 x_poly,
                                 y_poly,
                                 color="b",
                                 lw=1.5,
                                 linestyle="--",
-                                label=f"y = {coeff[0]:.2f}x + {coeff[1]:.2f}",
+                                label=f"y = {coeff[0]:.2f}x",
                             )
                             ax.legend()
                             ax.set_title(
@@ -487,11 +495,11 @@ for PFT_i in PFTs:
                             )
                             plt.close()
 
-                    WRF_var_diff_to_3km_2D = np.where(
-                        mask, proj_WRF_var_coarse_domain - WRF_var_3km, np.nan
+                    WRF_var_diff_to_1km_2D = np.where(
+                        mask, proj_WRF_var_coarse_domain - WRF_var_1km, np.nan
                     )
-                    diff_to_3km_4D.append(
-                        {"time": time.hour, WRF_var: WRF_var_diff_to_3km_2D}
+                    diff_to_1km_4D.append(
+                        {"time": time.hour, WRF_var: WRF_var_diff_to_1km_2D}
                     )
                     if WRF_var == "T2":
                         WRF_T2_2d = np.where(mask, proj_WRF_var_coarse_domain, np.nan)
@@ -499,9 +507,9 @@ for PFT_i in PFTs:
 
             # Convert lists to 3D arrays
             var_data = {}
-            hours = [entry["time"] for entry in diff_to_3km_4D]
+            hours = [entry["time"] for entry in diff_to_1km_4D]
 
-            for entry in diff_to_3km_4D:
+            for entry in diff_to_1km_4D:
                 for var_name, data in entry.items():
                     if var_name != "time":  # Skip the 'time' key
                         if var_name not in var_data:
@@ -535,6 +543,10 @@ for PFT_i in PFTs:
                             T2_coarse_domain_3D["T2"] <= T_ref + T_bin_size
                         )
                         masked_diff_T2 = diff_to_3km_3D["T2"][temp_mask]
+                        if diff_to_3km_3D[WRF_var].shape[0] == 2 * temp_mask.shape[0]:
+                            print(f"Brute-forcing shape for {WRF_var}: cutting from {diff_to_3km_3D[WRF_var].shape[0]} to {temp_mask.shape[0]}")
+                            diff_to_3km_3D[WRF_var] = diff_to_3km_3D[WRF_var][:temp_mask.shape[0]]
+
                         masked_diff_var = diff_to_3km_3D[WRF_var][temp_mask]
 
                         idx = np.isfinite(masked_diff_var) & np.isfinite(masked_diff_T2)
@@ -542,16 +554,8 @@ for PFT_i in PFTs:
                         diff_var_t = masked_diff_var[idx]
                         diff_T2_t = np.array(diff_T2_t)
                         diff_var_t = np.array(diff_var_t)
-                        # coeff = np.polyfit(
-                        #     masked_diff_T2[idx], masked_diff_var[idx], deg=1
-                        # )
-                        # a, b = coeff
-                        coeff, _, _, _ = np.linalg.lstsq(
-                            masked_diff_T2[idx][:, np.newaxis],
-                            masked_diff_var[idx],
-                            rcond=None,
-                        )
-                        a = coeff[0]
+                        coeff, _, _, _ = np.linalg.lstsq(masked_diff_T2[idx][:, np.newaxis], masked_diff_var[idx], rcond=None)
+
                         if plotting_scatter_all:
                             fig, ax = plt.subplots()
                             ax.scatter(
@@ -560,40 +564,55 @@ for PFT_i in PFTs:
                                 s=0.1,
                                 c="red",
                             )
-                            x_poly = np.linspace(
-                                masked_diff_T2[idx].min(),
-                                masked_diff_T2[idx].max(),
-                            )
-                            y_poly = a * x_poly
-                            ax.plot(
-                                x_poly,
-                                y_poly,
-                                color="b",
-                                lw=1.5,
-                                linestyle="--",
-                                label=f"y = {a:.2f}x",
-                            )
+                            if masked_diff_T2[idx].size > 0:
+                                x_poly = np.linspace(
+                                    masked_diff_T2[idx].min(),
+                                    masked_diff_T2[idx].max(),
+                                )
+                                y_poly = coeff[0] * x_poly
+                                ax.plot(
+                                    x_poly,
+                                    y_poly,
+                                    color="b",
+                                    lw=1.5,
+                                    linestyle="--",
+                                    label=f"y = {coeff[0]:.2f} * x",
+                                )
                             ax.legend()
                             ax.xaxis.grid(True, which="major")
                             ax.yaxis.grid(True, which="major")
-                            ax.set_xlabel("T2 diff. [°C]")
-                            ax.set_ylabel(
-                                f"{name_vars[WRF_var]} diff. [μmol CO2 m² s⁻¹]"
-                            )
+                            ax.set_xlabel("T2 diff [°C]")
+                            ax.set_ylabel(f"{name_vars[WRF_var]} diff")
                             formatted_T_ref = "{:.2f}".format(T_ref).replace(".", "_")[
                                 :4
                             ]
+                            r2 = r2_score(masked_diff_T2[idx], masked_diff_var[idx])
+                            rmse = np.sqrt(mean_squared_error(masked_diff_T2[idx], masked_diff_var[idx]))
+
+                            ax.text(
+                                0.05,
+                                0.95,
+                                f"R² = {r2:.2f}\nRMSE = {rmse:.2f}",
+                                transform=ax.transAxes,
+                                fontsize=12,
+                                verticalalignment="top",
+                                bbox=dict(
+                                    boxstyle="round,pad=0.3",
+                                    edgecolor="black",
+                                    facecolor="white",
+                                ),
+                            )
 
                             plt.title(
-                                f"PFT {labels_vprm_short[PFT_i-1]} {coarse_domain}-3km T2 and {name_vars[WRF_var]} at T_ref {formatted_T_ref} °C"
+                                f"WRF-VPRM PFT {labels_vprm_short[PFT_i-1]} {coarse_domain}-1km T2 and {name_vars[WRF_var]} at T_ref {formatted_T_ref} °C T_ref"
                             )
                             figname = (
                                 outfolder
-                                + f"WRF_T2_{WRF_var}_PFT_{labels_vprm_short[PFT_i-1]}_corr{ref_sim}{subdaily}_{STD_TOPO_flag}_STD_{STD_TOPO}_T_ref_{formatted_T_ref}_{time}.png"
+                                + f"WRF_T2_{WRF_var}_PFT_ {coarse_domain}-1km {labels_vprm_short[PFT_i-1]}_corr{ref_sim}{subdaily}_{STD_TOPO_flag}_STD_{STD_TOPO}_T_ref_{formatted_T_ref}_{time}.png"
                             )
                             plt.savefig(figname)
                             plt.close()
-                        coeff_all_T.append(a)
+                        coeff_all_T.append(coeff[0])
                     except:
                         print("Not enough Data for T_ref=%s" % T_ref)
                         coeff_all_T.append(np.nan)
@@ -601,19 +620,19 @@ for PFT_i in PFTs:
                 del coeff_all_T
 
             diff_hgt = np.where(mask, proj_hgt_coarse_domain, np.nan) - np.where(
-                mask, hgt_3km, np.nan
+                mask, hgt_1km, np.nan
             )
             diff_hgt_mean = np.nanmean(diff_hgt)
-            diff_hgt_mean_nonproj = np.nanmean(hgt_coarse_domain) - np.nanmean(hgt_3km)
+            diff_hgt_mean_nonproj = np.nanmean(hgt_coarse_domain) - np.nanmean(hgt_1km)
             pft_points_percent = (mask.sum() / (land_mask * stdh_mask).sum()) * 100
             print(
                 f"Percentage of {labels_vprm_short[PFT_i-1]} points from landmask {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
             )
             print(
-                f"Mean difference in height between projected {coarse_domain} and 3km is {diff_hgt_mean:.2f} m"
+                f"Mean difference in height between {coarse_domain} and 1km is {diff_hgt_mean:.2f} m"
             )
             print(
-                f"Mean of 3km is {np.nanmean(hgt_3km):.2f} and of raw {coarse_domain} is {np.nanmean(hgt_coarse_domain):.2f} with difference  {diff_hgt_mean_nonproj:.2f}  "
+                f"Mean of 1km is {np.nanmean(hgt_1km):.2f} and of {coarse_domain} is {np.nanmean(hgt_coarse_domain):.2f} with difference  {diff_hgt_mean_nonproj:.2f}  "
             )
 
             if plot_coeff:
@@ -621,7 +640,7 @@ for PFT_i in PFTs:
                 ax.set_xlabel(r"$T_{\text{ref}}$ [°C]")
                 ax.set_ylabel("Coefficients [µmol CO2 m² s⁻¹ °C⁻¹]")
                 ax.set_title(
-                    f"Coefficient Values for NEE, GPP, and RECO for {labels_vprm_short[PFT_i-1]} at {coarse_domain} vs. 3km"  # \n Percentage of {labels_vprm_short[PFT_i-1]} points from landmask  {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
+                    f"Coefficient Values for NEE, GPP, and RECO for {labels_vprm_short[PFT_i-1]} at {coarse_domain} vs. 1km"  # \n Percentage of {labels_vprm_short[PFT_i-1]} points from landmask  {STD_TOPO_flag} STD {STD_TOPO}: {pft_points_percent:.2f}"
                 )
                 figname = (
                     outfolder

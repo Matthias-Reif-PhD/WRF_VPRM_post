@@ -94,25 +94,25 @@ T_bin_size = 1
 
 # set True if you want plots
 plotting_refs = True
-plotting_scatter = False
-plotting_scatter_all = False
-T_bin_flag = False
+plotting_scatter = True
+plotting_scatter_all = True
+T_bin_flag = True
 
-start_date = "2012-07-01 01:00:00"
-end_date = "2012-07-31 00:00:00"
+# start_date = "2012-07-01 01:00:00"
+# end_date = "2012-07-31 00:00:00"
 wrf_paths = [
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241230_093202_ALPS_3km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20250105_193347_ALPS_9km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241229_112716_ALPS_27km",
-    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_20241227_183215_ALPS_54km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
 ]
-wrf_file = "wrfout_d01_2012-07-12_15:00:00"
+wrf_file = "wrfout_d01_2012-07-27_15:00:00"
+wrf_file_d2 = "wrfout_d02_2012-07-27_15:00:00"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 
 timedelt = 0
 month = "07"
-day = "28"
-timestr = "2020-" + month + "-" + day + "_09:00:00"
 
 
 #######################################################################################
@@ -136,8 +136,7 @@ units = [" [mmol m² s⁻¹]", " [mmol m² s⁻¹]", " [K]"]
 name_vars = {"EBIO_GEE": "WRF GPP", "EBIO_RES": "WRF RECO", "T2": "WRF T2M"}
 WRF_factors = [1 / 3600, 1 / 3600, 273.15]
 
-CTE_HR_flags = [False, False, False, False]  # ["nep"]
-VPRM_flags = [False, False, False, False]
+VPRM_flags = [False, False, False, False, False]
 VPRM_vars = ["NEE", "GEE", "RESP", "NaN"]
 VPRM_factors = [1, -1, 1, 1]
 flag_ini = True
@@ -147,7 +146,6 @@ for (
     CAMS_var,
     factor,
     unit,
-    CTE_HR_flag,
     VPRM_flag,
     VPRM_var,
     VPRM_factor,
@@ -157,7 +155,6 @@ for (
     CAMS_vars,
     CAMS_factors,
     units,
-    CTE_HR_flags,
     VPRM_flags,
     VPRM_vars,
     VPRM_factors,
@@ -169,10 +166,11 @@ for (
     i = 0
     # Loop through the files for the period
     # for nc_f1 in file_list_d1:
-    # TODO nc_fid0 = nc.Dataset(wrf_paths[3], "r")
+    nc_fid00 = nc.Dataset(os.path.join(wrf_paths[4], wrf_file), "r")
+    nc_fid0 = nc.Dataset(os.path.join(wrf_paths[3], wrf_file), "r")
     nc_fid1 = nc.Dataset(os.path.join(wrf_paths[2], wrf_file), "r")
     nc_fid2 = nc.Dataset(os.path.join(wrf_paths[1], wrf_file), "r")
-    nc_fid3 = nc.Dataset(os.path.join(wrf_paths[0], wrf_file), "r")
+    nc_fid3 = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_d2), "r")
 
     times_variable = nc_fid3.variables["Times"]
     start_date_bytes = times_variable[0, :].tobytes()
@@ -227,11 +225,33 @@ for (
     )
     WRF_var_d1_topo = np.nanmean(np.ma.masked_where(~mask, proj_WRF_var_d1))
 
-    # CTE_HR:
-    if CTE_HR_flag:
-        file_path_CTE_HR = "/home/madse/Build_WRF/DATA/CTE_HR/nep.2020" + month + ".nc"
-        CTE_HR_data = nc.Dataset(file_path_CTE_HR)
-        times_CTE_HR = CTE_HR_data.variables["time"]
+    if WRF_var == "T2":
+        WRF_var_d0 = nc_fid0.variables[WRF_var][0, :, :] - WRF_factor
+    else:
+        WRF_var_d0 = nc_fid0.variables[WRF_var][0, 0, :, :] * WRF_factor
+    lats_d0 = nc_fid0.variables["XLAT"][0, :, :]
+    lons_d0 = nc_fid0.variables["XLONG"][0, :, :]
+    landmask_0 = nc_fid0.variables["LANDMASK"][0, :, :]
+    WRF_var_d0[landmask_0 == 0] = np.nan
+    model_TSK_d0 = nc_fid0.variables["TSK"][:]
+    proj_WRF_var_d0 = proj_on_finer_WRF_grid(
+        lats_d0, lons_d0, WRF_var_d0, lats_fine, lons_fine, WRF_var_d3
+    )
+    WRF_var_d0_topo = np.nanmean(np.ma.masked_where(~mask, proj_WRF_var_d0))
+
+    if WRF_var == "T2":
+        WRF_var_ref = nc_fid00.variables[WRF_var][0, :, :] - WRF_factor
+    else:
+        WRF_var_ref = nc_fid00.variables[WRF_var][0, 0, :, :] * WRF_factor
+    lats_ref = nc_fid00.variables["XLAT"][0, :, :]
+    lons_ref = nc_fid00.variables["XLONG"][0, :, :]
+    landmask_00 = nc_fid00.variables["LANDMASK"][0, :, :]
+    WRF_var_ref[landmask_00 == 0] = np.nan
+    model_TSK_ref = nc_fid00.variables["TSK"][:]
+    proj_WRF_var_ref = proj_on_finer_WRF_grid(
+        lats_ref, lons_ref, WRF_var_ref, lats_fine, lons_fine, WRF_var_d3
+    )
+    WRF_var_ref_topo = np.nanmean(np.ma.masked_where(~mask, proj_WRF_var_ref))
 
     # VPRM:
     if VPRM_flag:
@@ -270,32 +290,6 @@ for (
 
             CAMS_var_x_topo = np.ma.masked_where(~mask, CAMS_proj)
             CAMS_average_over_topo = np.mean(CAMS_var_x_topo)
-        # CTE_HR: times_CTE_HR
-    if CTE_HR_flag:
-        j = 0
-        for time_CTE_HR in times_CTE_HR:
-            date_CTE_HR = datetime(2000, 1, 1) + timedelta(seconds=int(time_CTE_HR))
-            j = j + 1
-            if new_time == date_CTE_HR:
-                lat_CTE_HR = CTE_HR_data.variables["latitude"][:]
-                lon_CTE_HR = CTE_HR_data.variables["longitude"][:]
-                var_CTE_HR = (
-                    CTE_HR_data.variables["nep"][j - 1, :, :].data * 10**6
-                )  # convert mol m-2 s-1 to mumol m-2 s-1
-                CTE_HR_proj = proj_on_WRF_grid(
-                    lat_CTE_HR,
-                    lon_CTE_HR,
-                    var_CTE_HR,
-                    lats_fine,
-                    lons_fine,
-                    WRF_var_d3,
-                )
-                CTE_HR_var_x_topo = np.ma.masked_where(~mask, CTE_HR_proj)
-                CTE_HR_average_over_topo = np.mean(CTE_HR_var_x_topo)
-                print("projection of CTE_HR data")
-                print("... at ", date_CTE_HR)
-    else:
-        CTE_HR_average_over_topo = np.nan
 
     if VPRM_flag:
         j = 0
@@ -330,26 +324,28 @@ for (
 
     # Create a bar chart
     labels = [
+        "WRF 1km",
         "WRF 3km",
         "WRF 9km",
         "WRF 27km",
+        "WRF 54km",
         "CAMS",
         "VPRM",
-        "CTE_HR",
     ]
     values = [
         WRF_var_d3_topo_m,
         WRF_var_d2_topo,
         WRF_var_d1_topo,
+        WRF_var_d0_topo,
+        WRF_var_ref_topo,
         CAMS_average_over_topo,
         VPRM_average_over_topo,
-        CTE_HR_average_over_topo,
     ]
 
     if plotting_refs:
         figname = (
             outfolder
-            + "means_of_WRF_CAMS_VPRM_SiB4_"
+            + "means_of_WRF_CAMS_VPRM_"
             + name_vars[WRF_var]
             + "_stdv_"
             + str(STD_VAL)
@@ -357,7 +353,7 @@ for (
         )
         fig, ax = plt.subplots()
         bars = ax.bar(
-            labels, values, color=["blue", "green", "red", "magenta", "orange", "brown"]
+            labels, values, color=["blue", "green", "red", "magenta", "orange", "brown", "purple", "cyan"]
         )
         # Add labels to each bar
         for bar in bars:
@@ -387,14 +383,14 @@ for (
 
     diff_TSK = model_TSK_d1_topo - model_TSK_d3_topo
 
-    # scale by vegetation fraction to normalize for temp difference effect
+    # scale by vegetation fraction to normalize for temp difference effect TODO: check if this is correct
     if WRF_var != "TSK":
-        WRF_VEGFRA_d1 = nc_fid1.variables["VEGFRA"][0, :, :]
-        WRF_var_d1[WRF_VEGFRA_d1 < VEGFRA_percentage] = np.nan
-        WRF_var_d1 = WRF_var_d1 * WRF_VEGFRA_d1 / 100
+        WRF_VEGFRA_ref = nc_fid00.variables["VEGFRA"][0, :, :]
+        WRF_var_ref[WRF_VEGFRA_ref < VEGFRA_percentage] = np.nan
+        WRF_var_ref = WRF_var_ref * WRF_VEGFRA_ref / 100
 
-    proj_WRF_var_d1 = proj_on_finer_WRF_grid(
-        lats_d1, lons_d1, WRF_var_d1, lats_fine, lons_fine, WRF_var_d3
+    proj_WRF_var_ref = proj_on_finer_WRF_grid(
+        lats_ref, lons_ref, WRF_var_ref, lats_fine, lons_fine, WRF_var_d3
     )
 
     if WRF_var != "TSK":
@@ -402,7 +398,7 @@ for (
         WRF_var_d3[WRF_VEGFRA_d3 < VEGFRA_percentage] = np.nan
         WRF_var_d3 = WRF_var_d3 * WRF_VEGFRA_d3 / 100
 
-    diff_var = np.ma.masked_where(~mask, proj_WRF_var_d1) - np.ma.masked_where(
+    diff_var = np.ma.masked_where(~mask, proj_WRF_var_ref) - np.ma.masked_where(
         ~mask, WRF_var_d3
     )
 
@@ -446,7 +442,7 @@ for (
     # select range of T_refs
     # TODO: improve
     T_ref_values = range(
-        int(model_TSK_d1_topo.min() + 5), int(model_TSK_d1_topo.max() - 5), T_bin_size
+        int(model_TSK_d1_topo.min() + 7), int(model_TSK_d1_topo.max() - 3), T_bin_size
     )
 
     if flag_ini:
@@ -574,6 +570,10 @@ if T_bin_flag:
     ax.set_xlabel("T_ref")
     ax.set_ylabel("Coefficient Values")
     ax.set_title("Coefficient Values for NEE, GPP, and RECO")
+    # add legend and name the timeseries
+    ax.legend(loc="upper right")
+    ax.set_xticks(df_coeff.index)
+
     figname = outfolder + "WRF_T_ref_coefficients_STD_%s.png" % (STD_VAL,)
     plt.savefig(figname)
     # Show the plot

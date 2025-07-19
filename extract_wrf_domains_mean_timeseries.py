@@ -72,8 +72,8 @@ def extract_datetime_from_filename(filename):
 ################################# INPUT ##############################################
 
 run_Pmodel = False # set to True if you want to run Pmodel and Migliavacca RECO
-start_date = "2012-07-01 00:00:00"
-end_date = "2012-07-31 00:00:00"
+start_date = "2012-06-01 00:00:00"
+end_date = "2012-09-01 00:00:00"
 wrf_paths = [
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
@@ -81,7 +81,6 @@ wrf_paths = [
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
         ]
-
 
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 # set standard deviation of topography
@@ -96,7 +95,7 @@ if run_Pmodel:
 #######################################################################################
 # load CAMS data
 CAMS_path = (
-    "/scratch/c7071034/DATA/CAMS/ghg-reanalysis_surface_2012-07-01_2012-08-01.nc"
+    "/scratch/c7071034/DATA/CAMS/ghg-reanalysis_surface_2012_full.nc"
 )
 
 CAMS_data = nc.Dataset(CAMS_path)
@@ -108,7 +107,7 @@ CAMS_factors = [factor_kgC, -factor_kgC, 273.15]
 
 
 # Use glob to list all files in the directory
-ref_sim = ""  # "_REF" to use REF simulation or "" for tuned values
+ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
 WRF_vars = ["EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "T2"]
 units = [" [mmol m² s⁻¹]", " [mmol m² s⁻¹]", " [K]"]
 name_vars = {"EBIO_GEE"+ref_sim: "WRF GPP", "EBIO_RES"+ref_sim: "WRF RECO", "T2": "WRF T2M"}
@@ -120,10 +119,11 @@ start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()
 end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").date()
 
 # Collect all files
-all_files = sorted(glob.glob(os.path.join(wrf_paths[0], f"wrfout_d0*")))
-file_by_day = defaultdict(list)
+files_d01 = sorted(glob.glob(os.path.join(wrf_paths[1], f"wrfout_d01*")))
+files_d01 = [os.path.basename(f) for f in files_d01]
 
-for f in all_files:
+file_by_day = defaultdict(list)
+for f in files_d01:
     dt = extract_datetime_from_filename(f)
     day = dt.date()
     if start_date_obj <= day <= end_date_obj:
@@ -135,7 +135,6 @@ for day in sorted(file_by_day.keys()):
     files = sorted(file_by_day[day])
     if len(files) == 24 and all(dt.hour == i for i, (dt, _) in enumerate(files)):
         file_list.extend(f for _, f in files)
-
 
 timestamps = [extract_datetime_from_filename(f) for f in file_list]
 time_index = pd.to_datetime(timestamps)
@@ -203,13 +202,13 @@ for STD_TOPO in STD_TOPOs:
                 i = 0
                 # Loop through the files for the timestep
                 # for nc_f1 in file_list_27km:
-                nc_fid54km = nc.Dataset(os.path.join(wrf_paths[3], wrf_file), "r")
-                nc_fid27km = nc.Dataset(os.path.join(wrf_paths[2], wrf_file), "r")
-                nc_fid9km = nc.Dataset(os.path.join(wrf_paths[1], wrf_file), "r")
-                nc_fid3km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file), "r")
+                nc_fid54km = nc.Dataset(os.path.join(wrf_paths[4], wrf_file), "r")
+                nc_fid27km = nc.Dataset(os.path.join(wrf_paths[3], wrf_file), "r")
+                nc_fid9km = nc.Dataset(os.path.join(wrf_paths[2], wrf_file), "r")
+                nc_fid3km = nc.Dataset(os.path.join(wrf_paths[1], wrf_file), "r")
                 # relace d01 by d02 in the string of wrf_file
                 wrf_file_d02 = wrf_file.replace("d01", "d02")
-                nc_fid1km = nc.Dataset(os.path.join(wrf_paths[4], wrf_file_d02), "r")
+                nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_d02), "r")
 
                 times_variable = nc_fid1km.variables["Times"]
                 start_date_bytes = times_variable[0, :].tobytes()
