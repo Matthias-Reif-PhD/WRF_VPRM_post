@@ -110,9 +110,9 @@ CAMS_factors = [factor_kgC, -factor_kgC, 273.15]
 ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
 WRF_vars = ["EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "T2"]
 units = [" [mmol m² s⁻¹]", " [mmol m² s⁻¹]", " [K]"]
-name_vars = {"EBIO_GEE"+ref_sim: "WRF GPP", "EBIO_RES"+ref_sim: "WRF RECO", "T2": "WRF T2M"}
-WRF_factors = [-1 / 3600, 1 / 3600, 273.15]
-columns = ["GPP", "RECO", "T2"]
+name_vars = {"EBIO_GEE"+ref_sim: "WRF GPP", "EBIO_RES"+ref_sim: "WRF RECO", "T2": "WRF T2M", "EBIO_GEE_DPDT"+ref_sim: "WRF dGPPdT", "EBIO_RES_DPDT"+ref_sim: "WRF dRECOdT"}
+WRF_factors = [-1 / 3600, 1 / 3600, 273.15, -1 / 3600, 1 / 3600]
+columns = ["GPP", "RECO", "T2", "dGPPdT", "dRECOdT"]
 
 # Convert to datetime (but ignore time part for full-day selection)
 start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()

@@ -178,25 +178,10 @@ for column, unit in zip(columns, units):
 
             # Update x offset
             current_x += len(y) + gap_size
-            print(f"current_x: {current_x}, len(y): {len(y)}, date: {date}")
+            # print(f"current_x: {current_x}, len(y): {len(y)}, date: {date}")
         # add label below the x-axis
         plt.plot([], [], label=label_i, color=resolution_colors[res], linestyle="-")
         del current_x
-        # del grouped
-        # del valid_days
-        # del y
-        # del x    
-            
-    # plt.show()
-
-        # if plot_lt:
-        #     plt.plot(
-        #         data_series_lt.index,
-        #         data_series_lt,
-        #         label=label_i_lt,
-        #         linestyle=":",
-        #         color=resolution_colors[res],
-        #     )
 
     # Finalize axis
     plt.xticks(xticks, xticklabels, ha='left')
