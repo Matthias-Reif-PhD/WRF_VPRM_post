@@ -5,11 +5,11 @@ import numpy as np
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 
-start_date = "2012-06-01 00:00:00"
-end_date = "2012-09-01 00:00:00"
+start_date = "2012-01-01 00:00:00"
+end_date = "2012-12-30 00:00:00"
 STD_TOPO = 50
 plot_lt = False
-ref_sim = "" # "_REF" to use REF simulation or "" for tuned values
+ref_sim = "_REF" # "_REF" to use REF simulation or "" for tuned values
 run_Pmodel = False
 subdaily = ""  # "_subdailyC3" or ""
 

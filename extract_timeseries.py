@@ -668,8 +668,8 @@ def main():
         subday = args.subday
     else:  # to run locally for single cases
         subday = ""  # "subdailyC3_" or "" for daily data
-        start_date = "2012-01-01 00:00:00"
-        end_date = "2012-12-31 00:00:00"
+        start_date = "2012-06-01 00:00:00"
+        end_date = "2012-09-01 00:00:00"
         wrf_paths = [
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",

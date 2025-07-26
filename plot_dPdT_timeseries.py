@@ -8,9 +8,10 @@ import re
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 
-start_date = "2012-06-01 00:00:00"
-end_date = "2012-09-01 00:00:00"
-output_file = os.path.join(csv_folder, f"dPdT_timeseries_{start_date}_{end_date}.csv")
+start_date = "2012-01-01 00:00:00"
+end_date = "2012-12-30 00:00:00"
+ref_tag = "_54km"
+output_file = os.path.join(csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv")
 STD_TOPO = 50
 
 # --- Load Data ---
@@ -58,16 +59,16 @@ def plot_per_resolution(df, variable_groups):
                 current_x = 0
                 type_key = None
                 if "calc" in column:
-                    type_key = "lapse rate"
+                    type_key = f"{var_prefix} - lapse rate"
                 elif "model" in column:
-                    type_key = "T2 difference"
+                    type_key = f"{var_prefix} - T2 diff."
                 elif "real" in column:
-                    type_key = f"{var_prefix} difference"
+                    type_key = f"{var_prefix} - model"
 
                 type_colors = {
-                    f"{var_prefix} difference": "black",
-                    "T2 difference": "green",
-                    "lapse rate": "red"
+                    f"{var_prefix} - lapse rate": "red",
+                    f"{var_prefix} - T2 diff.": "green",
+                    f"{var_prefix} - model": "black"
                 }
 
                 color = type_colors.get(type_key, "gray")
@@ -108,7 +109,7 @@ def plot_per_resolution(df, variable_groups):
                 plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.3), ncol=3)
             plt.tight_layout()
             # plt.show()
-            plotname = f"{outfolder}timeseries_{var_prefix}_{res}_grouped_std_topo_{STD_TOPO}_{start_date}_{end_date}.png"
+            plotname = f"{outfolder}timeseries_{var_prefix}_{res}_grouped_std_topo_{STD_TOPO}_{start_date}_{end_date}{ref_tag}.png"
             print(f"saved plot: {plotname}")
             plt.savefig(plotname)
             plt.close()
