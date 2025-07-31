@@ -98,19 +98,19 @@ def extract_datetime_from_filename(filename):
 ################################# INPUT ##############################################
 plot_coeff = True
 plotting_scatter = False
-plotting_scatter_all = False # TODO: fix this need to be false currently. 
-start_date = "2012-07-27 00:00:00"
-end_date = "2012-07-28 00:00:00"
-hour_start = 5
-hour_end = 18
+plotting_scatter_all = False  # TODO: fix this need to be false currently.
+start_date = "2012-06-01 00:00:00"
+end_date = "2012-09-01 00:00:00"
+hour_start = 6
+hour_end = 17
 T_bin_size = 1
 T_ref_min = 5
 T_ref_max = 35
 STD_TOPOs = [50]
 STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
-ref_sim = "_REF" # "_REF" to use REF simulation or "" for tuned values
+ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
 subdaily = ""  # "_subdailyC3" or ""
-coarse_domains = ["54km", "27km", "9km", "3km"] # , "27km", "9km", "3km"
+coarse_domains = ["54km", "9km"]  # , "27km", "9km", "3km"
 
 wrf_files = "wrfout_d01*"
 wrf_files_1km = "wrfout_d02*"
@@ -119,7 +119,15 @@ pmodel_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gpp_pmodel/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli/"
 
 # WRF_vars = ["GPP_pmodel", "RECO_Migli", "NEE_PM", "EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "NEE","T2"]
-WRF_vars = ["EBIO_GEE", "EBIO_RES","NEE", "EBIO_GEE"+ref_sim, "EBIO_RES"+ref_sim, "NEE"+ref_sim,"T2"]
+WRF_vars = [
+    "EBIO_GEE",
+    "EBIO_RES",
+    "NEE",
+    "EBIO_GEE" + ref_sim,
+    "EBIO_RES" + ref_sim,
+    "NEE" + ref_sim,
+    "T2",
+]
 units = [
     " [mmol m² s⁻¹]",
     " [mmol m² s⁻¹]",
@@ -130,19 +138,19 @@ units = [
     " [K]",
 ]
 name_vars = {
-   # "GPP_pmodel": "GPP P-Model",
-   # "RECO_Migli": "RECO Migliavacca",
-   # "NEE_PM": "NEE Migli-P_Model",
+    # "GPP_pmodel": "GPP P-Model",
+    # "RECO_Migli": "RECO Migliavacca",
+    # "NEE_PM": "NEE Migli-P_Model",
     "EBIO_GEE": "WRF GPP",
     "EBIO_RES": "WRF RECO",
     "NEE": "WRF NEE",
-    "EBIO_GEE"+ref_sim: "WRF GPP"+ref_sim,
-    "EBIO_RES"+ref_sim: "WRF RECO"+ref_sim,
-    "NEE"+ref_sim: "WRF NEE"+ref_sim,
+    "EBIO_GEE" + ref_sim: "WRF GPP" + ref_sim,
+    "EBIO_RES" + ref_sim: "WRF RECO" + ref_sim,
+    "NEE" + ref_sim: "WRF NEE" + ref_sim,
     "T2": "WRF T2M",
 }
 # WRF_factors = [1, 1, 1, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
-WRF_factors = [ -1 / 3600, 1 / 3600, 1 / 3600, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
+WRF_factors = [-1 / 3600, 1 / 3600, 1 / 3600, -1 / 3600, 1 / 3600, 1 / 3600, 273.15]
 
 # Initialize an empty DataFrame with time as the index and locations as columns
 start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
@@ -189,14 +197,14 @@ for coarse_domain in coarse_domains:
 
     timestamps = [extract_datetime_from_filename(f) for f in file_list_hour]
     time_index = pd.to_datetime(timestamps)
-    diff_to_1km_4D = []           
-    T2_coarse_domain_4D = [] 
+    diff_to_1km_4D = []
+    T2_coarse_domain_4D = []
     # set standard deviation of topography
     for STD_TOPO in STD_TOPOs:
 
         for STD_TOPO_flag in STD_TOPO_flags:
-             
-            for wrf_file,wrf_file_1km in zip(file_list_hour,file_list_hour_1km):
+
+            for wrf_file, wrf_file_1km in zip(file_list_hour, file_list_hour_1km):
                 ini_switch = True
                 time = extract_datetime_from_filename(wrf_file)
                 print("processing ", time)
@@ -214,31 +222,35 @@ for coarse_domain in coarse_domains:
                     # Loop through the files for the timestep
                     # for nc_f1 in file_list_27km:
                     # in wrf_file, replace d02 with d01 for all coarse domains
-                    nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_1km), "r")
+                    nc_fid1km = nc.Dataset(
+                        os.path.join(wrf_paths[0], wrf_file_1km), "r"
+                    )
                     nc_fid_coarse_domain = nc.Dataset(
                         os.path.join(wrf_paths[1], wrf_file), "r"
                     )
-                    
+
                     times_variable = nc_fid1km.variables["Times"]
                     start_date_bytes = times_variable[0, :].tobytes()
                     start_date_str = start_date_bytes.decode("utf-8")
-                    lats_fine = nc_fid1km.variables["XLAT"][0, :, :]
-                    lons_fine = nc_fid1km.variables["XLONG"][0, :, :]
-                    landmask = nc_fid1km.variables["LANDMASK"][0, :, :]
-                    hgt_1km = nc_fid1km.variables["HGT"][0, :, :]
+                    lats_fine = nc_fid1km.variables["XLAT"][0, 10:-10, 10:-10]
+                    lons_fine = nc_fid1km.variables["XLONG"][0, 10:-10, 10:-10]
+                    landmask = nc_fid1km.variables["LANDMASK"][0, 10:-10, 10:-10]
+                    hgt_1km = nc_fid1km.variables["HGT"][0, 10:-10, 10:-10]
 
                     land_mask = landmask == 1
 
                     if WRF_var == "T2":
-                        WRF_var_1km = nc_fid1km.variables[WRF_var][0, :, :] - WRF_factor
+                        WRF_var_1km = (
+                            nc_fid1km.variables[WRF_var][0, 10:-10, 10:-10] - WRF_factor
+                        )
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables[WRF_var][0, :, :]
                             - WRF_factor
                         )
                     elif WRF_var == "NEE":
                         WRF_var_1km = (
-                            nc_fid1km.variables["EBIO_GEE"][0, 0, :, :]
-                            + nc_fid1km.variables["EBIO_RES"][0, 0, :, :]
+                            nc_fid1km.variables["EBIO_GEE"][0, 0, 10:-10, 10:-10]
+                            + nc_fid1km.variables["EBIO_RES"][0, 0, 10:-10, 10:-10]
                         ) * WRF_factor
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables["EBIO_GEE"][0, 0, :, :]
@@ -246,12 +258,20 @@ for coarse_domain in coarse_domains:
                         ) * WRF_factor
                     elif WRF_var == "NEE_REF":
                         WRF_var_1km = (
-                            nc_fid1km.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
-                            + nc_fid1km.variables["EBIO_RES" + ref_sim][0, 0, :, :]
+                            nc_fid1km.variables["EBIO_GEE" + ref_sim][
+                                0, 0, 10:-10, 10:-10
+                            ]
+                            + nc_fid1km.variables["EBIO_RES" + ref_sim][
+                                0, 0, 10:-10, 10:-10
+                            ]
                         ) * WRF_factor
                         WRF_var_coarse_domain = (
-                            nc_fid_coarse_domain.variables["EBIO_GEE" + ref_sim][0, 0, :, :]
-                            + nc_fid_coarse_domain.variables["EBIO_RES" + ref_sim][0, 0, :, :]
+                            nc_fid_coarse_domain.variables["EBIO_GEE" + ref_sim][
+                                0, 0, :, :
+                            ]
+                            + nc_fid_coarse_domain.variables["EBIO_RES" + ref_sim][
+                                0, 0, :, :
+                            ]
                         ) * WRF_factor
                     elif WRF_var == "GPP_pmodel":
                         # get pmodel gpp
@@ -303,7 +323,8 @@ for coarse_domain in coarse_domains:
                         )
                     else:
                         WRF_var_1km = (
-                            nc_fid1km.variables[WRF_var][0, 0, :, :] * WRF_factor
+                            nc_fid1km.variables[WRF_var][0, 0, 10:-10, 10:-10]
+                            * WRF_factor
                         )
                         WRF_var_coarse_domain = (
                             nc_fid_coarse_domain.variables[WRF_var][0, 0, :, :]
@@ -360,14 +381,20 @@ for coarse_domain in coarse_domains:
                             fig, ax = plt.subplots(figsize=(8, 6))
 
                             idx = np.isfinite(WRF_diff) & np.isfinite(hgt_diff)
-                            #coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
-                            coeff, _, _, _ = np.linalg.lstsq(hgt_diff[idx][:, np.newaxis], WRF_diff[idx], rcond=None)
-                            x_poly = np.linspace(hgt_diff[idx].min(), hgt_diff[idx].max())
+                            # coeff = np.polyfit(hgt_diff[idx], WRF_diff[idx], deg=1)
+                            coeff, _, _, _ = np.linalg.lstsq(
+                                hgt_diff[idx][:, np.newaxis], WRF_diff[idx], rcond=None
+                            )
+                            x_poly = np.linspace(
+                                hgt_diff[idx].min(), hgt_diff[idx].max()
+                            )
                             y_poly = coeff[0] * x_poly
 
                             # calculate the R2 and the RMSE value
                             r2 = r2_score(WRF_diff[idx], hgt_diff[idx])
-                            rmse = np.sqrt(mean_squared_error(WRF_diff[idx], hgt_diff[idx]))
+                            rmse = np.sqrt(
+                                mean_squared_error(WRF_diff[idx], hgt_diff[idx])
+                            )
 
                             ax.text(
                                 0.05,
@@ -383,7 +410,9 @@ for coarse_domain in coarse_domains:
                                 ),
                             )
 
-                            ax.scatter(hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5)
+                            ax.scatter(
+                                hgt_diff[idx], WRF_diff[idx], s=5, c="k", alpha=0.5
+                            )
                             ax.plot(
                                 x_poly,
                                 y_poly,
@@ -407,20 +436,18 @@ for coarse_domain in coarse_domains:
                             )
                             plt.close
 
-
                     if WRF_var == "T2":
                         WRF_T2_2d = np.where(mask, proj_WRF_var_coarse_domain, np.nan)
                         T2_coarse_domain_4D.append({"time": time.hour, "T2": WRF_T2_2d})
                         del WRF_T2_2d
-                    
+
                     WRF_var_diff_to_1km_2D = np.where(
-                    mask, proj_WRF_var_coarse_domain - WRF_var_1km, np.nan
+                        mask, proj_WRF_var_coarse_domain - WRF_var_1km, np.nan
                     )
                     diff_to_1km_4D.append(
                         {"time": time.hour, WRF_var: WRF_var_diff_to_1km_2D}
                     )
                     del WRF_var_diff_to_1km_2D
-
 
             # Convert lists to 3D arrays
             var_data = {}
@@ -466,7 +493,11 @@ for coarse_domain in coarse_domains:
                         diff_var_t = masked_diff_var[idx]
                         diff_T2_t = np.array(diff_T2_t)
                         diff_var_t = np.array(diff_var_t)
-                        coeff, _, _, _ = np.linalg.lstsq(masked_diff_T2[idx][:, np.newaxis], masked_diff_var[idx], rcond=None)
+                        coeff, _, _, _ = np.linalg.lstsq(
+                            masked_diff_T2[idx][:, np.newaxis],
+                            masked_diff_var[idx],
+                            rcond=None,
+                        )
 
                         if plotting_scatter_all:
                             fig, ax = plt.subplots()
@@ -499,7 +530,11 @@ for coarse_domain in coarse_domains:
                                 :4
                             ]
                             r2 = r2_score(masked_diff_T2[idx], masked_diff_var[idx])
-                            rmse = np.sqrt(mean_squared_error(masked_diff_T2[idx], masked_diff_var[idx]))
+                            rmse = np.sqrt(
+                                mean_squared_error(
+                                    masked_diff_T2[idx], masked_diff_var[idx]
+                                )
+                            )
 
                             ax.text(
                                 0.05,
@@ -547,9 +582,7 @@ for coarse_domain in coarse_domains:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
                 ax.set_xlabel(r"$T_{\text{ref}}$ [°C]")
                 ax.set_ylabel("Coefficients [μmol CO2 m² s⁻¹ °C⁻¹]")
-                ax.set_title(
-                    f"Coefficient Values for NEE, GPP, and RECO"
-                )
+                ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")
                 figname = (
                     outfolder
                     + f"WRF_Tref_coefficients{ref_sim}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"

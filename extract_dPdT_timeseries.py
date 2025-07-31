@@ -9,8 +9,9 @@ import os
 from collections import defaultdict
 
 
-
-def generate_coastal_mask(veg_type: np.ndarray, buffer_km: float = 50.0, grid_spacing_km: float = 3.0) -> np.ndarray:
+def generate_coastal_mask(
+    veg_type: np.ndarray, buffer_km: float = 50.0, grid_spacing_km: float = 3.0
+) -> np.ndarray:
     """
     Returns a new landmask where any point within `buffer_km` of the coastline is set to 0 (masked).
 
@@ -38,8 +39,9 @@ def generate_coastal_mask(veg_type: np.ndarray, buffer_km: float = 50.0, grid_sp
 
     return new_landmask
 
+
 def proj_on_finer_WRF_grid(
-    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_1km,method_in
+    lats_coarse, lons_coarse, var_coarse, lats_fine, lons_fine, WRF_var_1km, method_in
 ):
     proj_var = griddata(
         (lats_coarse.flatten(), lons_coarse.flatten()),
@@ -48,6 +50,7 @@ def proj_on_finer_WRF_grid(
         method=method_in,
     ).reshape(WRF_var_1km.shape)
     return proj_var
+
 
 def proj_on_finer_WRF_grid_3D(
     lats_coarse: np.ndarray,
@@ -71,9 +74,12 @@ def proj_on_finer_WRF_grid_3D(
             var_coarse[z].flatten(),
             (lats_fine, lons_fine),
             method=method_in,
-        ).reshape(interp_shape[1:])  # (y_fine, x_fine)
+        ).reshape(
+            interp_shape[1:]
+        )  # (y_fine, x_fine)
 
     return proj_var
+
 
 def extract_datetime_from_filename(filename):
     """
@@ -87,21 +93,30 @@ def extract_datetime_from_filename(filename):
 ############# INPUT ############
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
-temp_gradient = -6.5 # K/km
+temp_gradient = -6.5  # K/km
 STD_TOPO = 50
-start_date = "2012-01-01 00:00:00"
-end_date = "2012-12-30 00:00:00"
+start_date = "2012-06-01 00:00:00"  # TODO: run also for _REF simulation
+end_date = "2012-09-01 00:00:00"
 use_dPdT_54km = True
 ###################################
 
 wrf_paths = [
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
-            "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
-        ]
-columns = ["dT_calc_mean", "dT_model_mean", "dGPP_calc_mean", "dGPP_model_mean", "dGPP_real_mean", "dRECO_calc_mean", "dRECO_model_mean", "dRECO_real_mean"]
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
+    "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
+]
+columns = [
+    "dT_calc_mean",
+    "dT_model_mean",
+    "dGPP_calc_mean",
+    "dGPP_model_mean",
+    "dGPP_real_mean",
+    "dRECO_calc_mean",
+    "dRECO_model_mean",
+    "dRECO_real_mean",
+]
 
 start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()
 end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").date()
@@ -128,21 +143,21 @@ for wrf_file in file_list:
 
     # Load the NetCDF file
     wrf_file_d02 = wrf_file.replace("d01", "d02")
-    nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_d02), "r") 
-    GPP_1km = -nc_fid1km.variables['EBIO_GEE'][0,0, :,:]
-    RECO_1km = nc_fid1km.variables['EBIO_RES'][0,0, :,:]
-    HGT_1km = nc_fid1km.variables['HGT'][0]
-    T2_1km = nc_fid1km.variables['T2'][0]-273.15
-    lats_fine = nc_fid1km.variables["XLAT"][0, :, :]
-    lons_fine = nc_fid1km.variables["XLONG"][0, :, :]
-    stdh_topo_1km = nc_fid1km.variables["VAR"][0, :, :]
+    nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_d02), "r")
+    GPP_1km = -nc_fid1km.variables["EBIO_GEE"][0, 0, 10:-10, 10:-10]
+    RECO_1km = nc_fid1km.variables["EBIO_RES"][0, 0, 10:-10, 10:-10]
+    HGT_1km = nc_fid1km.variables["HGT"][0, 10:-10, 10:-10]
+    T2_1km = nc_fid1km.variables["T2"][0, 10:-10, 10:-10] - 273.15
+    lats_fine = nc_fid1km.variables["XLAT"][0, 10:-10, 10:-10]
+    lons_fine = nc_fid1km.variables["XLONG"][0, 10:-10, 10:-10]
+    stdh_topo_1km = nc_fid1km.variables["VAR"][0, 10:-10, 10:-10]
     stdh_mask = stdh_topo_1km >= STD_TOPO
-    CLDFRC_1km = nc_fid1km.variables["CLDFRA"][0, :, :, :] 
-    
+    CLDFRC_1km = nc_fid1km.variables["CLDFRA"][0, :, 10:-10, 10:-10]
+
     if use_dPdT_54km:
-        nc_fid54km = nc.Dataset(os.path.join(wrf_paths[4], wrf_file), "r") 
-        dGPPdT_ref54 = -nc_fid54km.variables['EBIO_GEE_DPDT'][0,0, :,:]
-        dRECOdT_ref54 = nc_fid54km.variables['EBIO_RES_DPDT'][0,0, :,:]
+        nc_fid54km = nc.Dataset(os.path.join(wrf_paths[4], wrf_file), "r")
+        dGPPdT_ref54 = -nc_fid54km.variables["EBIO_GEE_DPDT"][0, 0, :, :]
+        dRECOdT_ref54 = nc_fid54km.variables["EBIO_RES_DPDT"][0, 0, :, :]
         lats_coarsegrid = nc_fid54km.variables["XLAT"][0, :, :]
         lons_coarsegrid = nc_fid54km.variables["XLONG"][0, :, :]
         ref_tag = "_54km"
@@ -165,20 +180,18 @@ for wrf_file in file_list:
             interp_method,
         )
     else:
-        dGPPdT_ref = -nc_fid1km.variables['EBIO_GEE_DPDT'][0,0, :,:]
-        dRECOdT_ref = nc_fid1km.variables['EBIO_RES_DPDT'][0,0, :,:]
+        dGPPdT_ref = -nc_fid1km.variables["EBIO_GEE_DPDT"][0, 0, 10:-10, 10:-10]
+        dRECOdT_ref = nc_fid1km.variables["EBIO_RES_DPDT"][0, 0, 10:-10, 10:-10]
         ref_tag = ""
-
-    
 
     for wrf_path in wrf_paths[1:]:
         nc_fidcoarsegrid = nc.Dataset(os.path.join(wrf_path, wrf_file), "r")
-        GPP_coarsegrid = -nc_fidcoarsegrid.variables['EBIO_GEE'][0,0, :,:]
-        RECO_coarsegrid = nc_fidcoarsegrid.variables['EBIO_RES'][0,0, :,:]
-        dGPPdT_coarsegrid = -nc_fidcoarsegrid.variables['EBIO_GEE_DPDT'][:]
-        dRECOdT_coarsegrid = nc_fidcoarsegrid.variables['EBIO_RES_DPDT'][:]
-        HGT_coarsegrid = nc_fidcoarsegrid.variables['HGT'][0]
-        T2_coarsegrid = nc_fidcoarsegrid.variables['T2'][0]-273.15
+        GPP_coarsegrid = -nc_fidcoarsegrid.variables["EBIO_GEE"][0, 0, :, :]
+        RECO_coarsegrid = nc_fidcoarsegrid.variables["EBIO_RES"][0, 0, :, :]
+        dGPPdT_coarsegrid = -nc_fidcoarsegrid.variables["EBIO_GEE_DPDT"][:]
+        dRECOdT_coarsegrid = nc_fidcoarsegrid.variables["EBIO_RES_DPDT"][:]
+        HGT_coarsegrid = nc_fidcoarsegrid.variables["HGT"][0]
+        T2_coarsegrid = nc_fidcoarsegrid.variables["T2"][0] - 273.15
         veg_type = nc_fidcoarsegrid.variables["IVGTYP"][0, :, :]
         lats_coarsegrid = nc_fidcoarsegrid.variables["XLAT"][0, :, :]
         lons_coarsegrid = nc_fidcoarsegrid.variables["XLONG"][0, :, :]
@@ -238,7 +251,9 @@ for wrf_file in file_list:
             CLDFRC_1km,
             interp_method,
         )
-        new_landmask = generate_coastal_mask(veg_type, buffer_km=30.0, grid_spacing_km=50.0) # TODO adopt to resolution
+        new_landmask = generate_coastal_mask(
+            veg_type, buffer_km=30.0, grid_spacing_km=50.0
+        )  # TODO adopt to resolution
         proj_landmask_coarsegrid = proj_on_finer_WRF_grid(
             lats_coarsegrid,
             lons_coarsegrid,
@@ -249,27 +264,28 @@ for wrf_file in file_list:
             interp_method,
         )
 
-        diff_HGT =  proj_HGT_coarsegrid - HGT_1km 
-        diff_HGT[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        conv_factor = 1/3600
+        diff_HGT = proj_HGT_coarsegrid - HGT_1km
+        diff_HGT[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        conv_factor = 1 / 3600
 
-        dT_calc = diff_HGT/1000*temp_gradient
+        dT_calc = diff_HGT / 1000 * temp_gradient
         dT_model = proj_T2_coarsegrid - T2_1km
-        dGPP_calc = dGPPdT_ref * conv_factor * dT_calc 
+        dGPP_calc = dGPPdT_ref * conv_factor * dT_calc
         dGPP_model = dGPPdT_ref * conv_factor * dT_model
-        dGPP_real = (proj_GPP_coarsegrid - GPP_1km)* conv_factor
+        dGPP_real = (proj_GPP_coarsegrid - GPP_1km) * conv_factor
         dRECO_calc = dRECOdT_ref * conv_factor * dT_calc
         dRECO_model = dRECOdT_ref * conv_factor * dT_model
-        dRECO_real = (proj_RECO_coarsegrid - RECO_1km)* conv_factor
+        dRECO_real = (proj_RECO_coarsegrid - RECO_1km) * conv_factor
 
-        dT_calc[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dT_model[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dGPP_calc[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dGPP_model[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dGPP_real[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dRECO_calc[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dRECO_model[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
-        dRECO_real[proj_landmask_coarsegrid*stdh_mask == 0] = np.nan
+        stdh_mask[T2_1km < 5] = False
+        dT_calc[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dT_model[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dGPP_calc[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dGPP_model[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dGPP_real[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dRECO_calc[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dRECO_model[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
+        dRECO_real[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
 
         dT_calc_mean = np.nanmean(dT_calc)
         dT_model_mean = np.nanmean(dT_model)
@@ -285,27 +301,26 @@ for wrf_file in file_list:
 
         # Create a fresh data_row for each resolution
         data_row = {
-            "dT_calc_mean_"+resolution: dT_calc_mean,
-            "dT_model_mean_"+resolution: dT_model_mean,
-            "dGPP_calc_mean_"+resolution: dGPP_calc_mean,
-            "dGPP_model_mean_"+resolution: dGPP_model_mean,
-            "dGPP_real_mean_"+resolution: dGPP_real_mean,
-            "dRECO_calc_mean_"+resolution: dRECO_calc_mean,
-            "dRECO_model_mean_"+resolution: dRECO_model_mean,
-            "dRECO_real_mean_"+resolution: dRECO_real_mean,
+            "dT_calc_mean_" + resolution: dT_calc_mean,
+            "dT_model_mean_" + resolution: dT_model_mean,
+            "dGPP_calc_mean_" + resolution: dGPP_calc_mean,
+            "dGPP_model_mean_" + resolution: dGPP_model_mean,
+            "dGPP_real_mean_" + resolution: dGPP_real_mean,
+            "dRECO_calc_mean_" + resolution: dRECO_calc_mean,
+            "dRECO_model_mean_" + resolution: dRECO_model_mean,
+            "dRECO_real_mean_" + resolution: dRECO_real_mean,
         }
         # Add the data_row to the DataFrame
         df_out_dPdT.loc[time, data_row.keys()] = data_row.values()
-        #del dT_calc_mean, dT_model_mean, dGPP_calc_mean, dGPP_model_mean, dGPP_real_mean, dRECO_calc_mean, dRECO_model_mean, dRECO_real_mean
-        
-        print(f"Processed {wrf_file} at resolution {resolution} with dPdT ref {ref_tag}")
+        # del dT_calc_mean, dT_model_mean, dGPP_calc_mean, dGPP_model_mean, dGPP_real_mean, dRECO_calc_mean, dRECO_model_mean, dRECO_real_mean
+
+        print(
+            f"Processed {wrf_file} at resolution {resolution} with dPdT ref {ref_tag}"
+        )
 
 # Save the DataFrame to a CSV file
-output_file = os.path.join(csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv")
+output_file = os.path.join(
+    csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv"
+)
 df_out_dPdT.to_csv(output_file, index_label="datetime")
 print(f"Data saved to {output_file}")
-
-
-
-
-

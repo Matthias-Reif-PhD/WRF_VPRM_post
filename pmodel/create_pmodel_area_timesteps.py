@@ -3,10 +3,22 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 from scipy.ndimage import uniform_filter1d
-
+from datetime import datetime
+import glob
+from collections import defaultdict
 import pandas as pd
 import numpy as np
 from pyrealm.pmodel import PModel, PModelEnvironment, SubdailyPModel, AcclimationModel
+from pyrealm.core.hygro import convert_sh_to_vpd
+
+
+def extract_datetime_from_filename(filename):
+    """
+    Extract datetime from WRF filename assuming format 'wrfout_d0x_YYYY-MM-DD_HH:MM:SS'.
+    """
+    base_filename = os.path.basename(filename)
+    date_str = base_filename.split("_")[-2] + "_" + base_filename.split("_")[-1]
+    return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
 
 def pModel_subdaily_area(
@@ -21,6 +33,7 @@ def pModel_subdaily_area(
     window_center_i: int,
     half_width_i: int,
 ):
+    correction_factor = 1 / 3
     gC_to_mumol = 0.0833
 
     temp_subdaily = np.where(temp_subdaily < -25, np.nan, temp_subdaily)
@@ -45,7 +58,7 @@ def pModel_subdaily_area(
     )
 
     pmodel_subdaily = SubdailyPModel(env=subdaily_env, acclim_model=acclim_model)
-    pmodel_subdaily_acc = pmodel_subdaily.gpp * gC_to_mumol
+    pmodel_subdaily_acc = pmodel_subdaily.gpp * gC_to_mumol * correction_factor
 
     return pmodel_subdaily_acc
 
@@ -190,30 +203,55 @@ wrf_paths = [
     "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
 ]
 
-modis_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/"
+modis_path = "/scratch/c7071034/DATA/MODIS/MODIS_FPAR/gap_filled/"
 migli_path = "/scratch/c7071034/DATA/RECO_Migli"
+start_date = "2012-06-12 00:00:00"
+end_date = "2012-06-30 00:00:00"
 
 # pmodel parameters
-days_mem = 37
-half_wdth = 92
-window_cent = 13
+days_mem = 15
+half_wdth = 1
+window_cent = 12
+scaling_factor = 2 / 3
 gC_to_mumol = 0.0833  # 1 µg C m⁻² s⁻¹ × (1 µmol C / 12.01 µg C) × (1 µmol CO₂ / 1 µmol C) = 0.0833 µmol CO₂ m⁻² s⁻¹
+
+# Convert to datetime (but ignore time part for full-day selection)
+start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()
+end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S").date()
+
+# Collect all files
+files_d01 = sorted(glob.glob(os.path.join(wrf_paths[1], f"wrfout_d01*")))
+files_d01 = [os.path.basename(f) for f in files_d01]
+
+file_by_day = defaultdict(list)
+for f in files_d01:
+    dt = extract_datetime_from_filename(f)
+    day = dt.date()
+    if start_date_obj <= day <= end_date_obj:
+        file_by_day[day].append((dt, f))
+
+# Filter for full days (24 hourly files starting from 00:00 to 23:00)
+file_list = []
+for day in sorted(file_by_day.keys()):
+    files = sorted(file_by_day[day])
+    if len(files) == 24 and all(dt.hour == i for i, (dt, _) in enumerate(files)):
+        file_list.extend(f for _, f in files)
+
+timestamps = [extract_datetime_from_filename(f) for f in file_list]
+time_index = pd.to_datetime(timestamps)
 
 for wrf_path in wrf_paths:
     wrf_path_dx_str = wrf_path.split("_")[-1]
-    # list all files in the wrf_path
-    files = os.listdir(wrf_path)
 
-    domain = wrf_path.split("_")[-1]
-    if domain == "1km":
-        files = [f for f in files if f.startswith("wrfout_d02")]
-    else:
-        files = [f for f in files if f.startswith("wrfout_d01")]
-    files.sort()
-    timesteps = len(files) - 1
+    timesteps = len(file_list)
     # get datetime from first file
-    datetimestart = files[1].split("_")[2] + " " + files[1].split("_")[3]
-    wrf_ds = xr.open_dataset(wrf_path + "/" + files[0])
+    datetimestart = file_list[1].split("_")[2] + " " + file_list[1].split("_")[3]
+    domain02 = wrf_path.split("_")[-1] == "1km"  # Check if the file is for domain d02
+    if domain02:
+        file_list = [f.replace("d01", "d02") for f in file_list]
+    else:
+        file_list = [f.replace("d02", "d01") for f in file_list]
+    wrf_ds = xr.open_dataset(wrf_path + "/" + file_list[0])
     temp = wrf_ds["T2"].to_numpy()
     l, m, n = temp.shape
     fpar_modis_arr = np.zeros((timesteps, m, n))
@@ -233,8 +271,10 @@ for wrf_path in wrf_paths:
     IVGTYP_mask = np.where(IVGTYP_vprm == 8, True, False)
 
     t = 0
-    for file in files[1:]:
+    # files = files[224:378]  # TODO
+    for file in file_list:
         day = int(file.split("_")[2].split("-")[2])
+        month = int(file.split("_")[2].split("-")[1])
 
         if day > 30:
             continue
@@ -250,12 +290,21 @@ for wrf_path in wrf_paths:
         psfc = wrf_ds["PSFC"].isel(Time=0).to_numpy()  # Surface pressure (Pa)
         t2 = wrf_ds["T2"].isel(Time=0).to_numpy()  # Temperature at 2m (K)
 
-        # Calculate actual vapor pressure (ea) in kPa
-        ea = (qvapor * psfc) / (0.622 + qvapor)  # Pa
-        # Calculate saturation vapor pressure (es) in kPa
-        es = 0.6108 * np.exp((17.27 * temp) / (temp + 237.3)) * 1000  # convert to Pa
-        # Calculate VPD
-        vpd = np.maximum(0, es - ea)  # Force non-negative VPD
+        # # Calculate actual vapor pressure (ea) in kPa
+        # ea = (qvapor * psfc) / (0.622 + qvapor)  # Pa
+        # # Calculate saturation vapor pressure (es) in kPa
+        # es = 0.6108 * np.exp((17.27 * temp) / (temp + 237.3)) * 1000  # convert to Pa
+        # # Calculate VPD
+        # vpd = np.maximum(0, es - ea)  # Force non-negative VPD
+
+        epsilon = 0.622
+        w = qvapor  # your mixing ratio in kg/kg
+        q = w / (1 + w)  # now specific humidity in kg/kg
+
+        vpd = (
+            convert_sh_to_vpd(sh=q, ta=t2 - 273.15, patm=psfc / 1000) * 1000
+        )  # result in Pa
+        vpd = np.clip(vpd, 0, np.inf)
 
         # Load required variables from WRF dataset
         vegfra = wrf_ds["VEGFRA"].to_numpy()  # Vegetation fraction (0 to 1)
@@ -268,27 +317,18 @@ for wrf_path in wrf_paths:
         xlon = wrf_ds["XLONG"].to_numpy()  # Longitude (degrees)
         xlat = xlat[0, :, :]
         xlon = xlon[0, :, :]
-        fapar_wrf = (1 - albedo) * (vegfra / 100)  # Calculate fAPAR
+        # fapar_wrf = (1 - albedo) * (vegfra / 100)  # Calculate fAPAR
 
         # get modis fpar
-        modis_path_in = f"{modis_path}fpar_interpol/interpolated_fpar_{wrf_path_dx_str}_2012-07-{day:02d}T12:00:00.nc"
+        modis_path_in = f"{modis_path}fpar_interpol/interpolated_fpar_{wrf_path_dx_str}_2012-{month:02d}-{day:02d}T12:00:00.nc"
         modis_ds = xr.open_dataset(modis_path_in)
-        fpar_modis = modis_ds["Fpar_500m"].to_numpy()  # fAPAR from MODIS
-        # where modis is nan use values from fapar_wrf
-        fpar_modis = np.where(
-            np.isnan(fpar_modis), fapar_wrf, fpar_modis
-        )  # TODO: how is this handled in literature? There is no fPAR Data around cities, so these areas could also be masked out, but I would habe to modify the landcover maps...
-        # set fpar_modis to 0 where IVGTYP_vprm is 8
+        fpar_modis = modis_ds["FAPAR"].to_numpy()  # fAPAR from MODIS
+        # # where modis is nan use values from fapar_wrf
+        # fpar_modis = np.where(
+        #     np.isnan(fpar_modis), fapar_wrf, fpar_modis
+        # )  # TODO: how is this handled in literature? There is no fPAR Data around cities, so these areas could also be masked out, but I would habe to modify the landcover maps...
+        # # set fpar_modis to 0 where IVGTYP_vprm is 8
         fpar_modis[IVGTYP_mask] = 0
-
-        # Ensure proper dimensions and clean invalid data
-        temp[temp < -25] = -25  # Mask temperatures below -25°C
-        vpd[vpd < 0] = 0
-        ppfd[ppfd < 0] = 0
-        co2[co2 < 0] = 0
-        co2[co2 > 1000] = 1000
-        patm[patm < 30000] = 30000
-        patm[patm > 110000] = 110000
 
         # save data in arrays
         tc_arr[t, :, :] = temp[0, :, :]
@@ -307,8 +347,20 @@ for wrf_path in wrf_paths:
 
         t += 1
 
-    # env_arr = PModelEnvironment(tc=tc_arr, co2=co2_arr, patm=patm_arr, vpd=vpd_arr)
-    # env_arr.summarize()
+    co2_clipped = np.clip(co2_arr, 300, 600)
+    vpd_clipped = np.clip(vpd_arr, 1, 4000)
+    tc_clipped = np.clip(tc_arr, -5, 45)
+    ppfd_arr[ppfd_arr < 0] = 0
+
+    pm_env = PModelEnvironment(
+        tc=tc_clipped,
+        patm=patm_arr,
+        vpd=vpd_clipped,
+        co2=co2_clipped,
+        fapar=fpar_modis_arr,
+        ppfd=ppfd_arr,
+    )
+    pm_env.summarize()
 
     # # calculate GPP with acclimation
     datetimes = pd.date_range(
@@ -331,18 +383,17 @@ for wrf_path in wrf_paths:
     # TODO: Calculation of GPP using fast and slow responses
 
     t = 0
-    for file in files[1:]:
-        subdailyC3_gpp = subdailyC3_arr[t, :, :]
+    for file in file_list:
+        subdailyC3_gpp = subdailyC3_arr[t, :, :] * scaling_factor
         # print(t, " ", np.nanmax(subdailyC3_gpp))
         # save data in netcdf
         date_time = file.split("_")[2] + "_" + file.split("_")[3]
-        gpp_path_out = f"{modis_path}gpp_pmodel/gpp_pmodel_subdailyC3_{wrf_path_dx_str}_{date_time}.nc"
+        gpp_path_out = f"{modis_path}gpp_pmodel/gpp_pmodel_subdailyC3v2_{wrf_path_dx_str}_{date_time}.nc"
         xr.DataArray(subdailyC3_gpp, name="GPP_Pmodel").to_netcdf(
             gpp_path_out, format="NETCDF4_CLASSIC"
         )
         t += 1
-
-    print(f"Saved GPP data to {gpp_path_out}")
+        print(f"Saved GPP data to {gpp_path_out}")
 
     # Ensure rainc_arr is a NumPy array (3D: time, lat, lon)
     rainc_arr = np.asarray(rainc_arr)
@@ -425,14 +476,12 @@ for wrf_path in wrf_paths:
     )
 
     t = 0
-    for file in files[1:]:
+    for file in file_list:
         Reco_opt_t = Reco_optimized[t, :, :]
         date_time = file.split("_")[2] + "_" + file.split("_")[3]
-        reco_path_out = (
-            f"{migli_path}/reco_migliavacca_subdailyC3_{wrf_path_dx_str}_{date_time}.nc"
-        )
+        reco_path_out = f"{migli_path}/reco_migliavacca_subdailyC3v2_{wrf_path_dx_str}_{date_time}.nc"
         xr.DataArray(Reco_opt_t, name="RECO_Migli").to_netcdf(
             reco_path_out, format="NETCDF4_CLASSIC"
         )
         t += 1
-    print("Reco_optimized written to : ", reco_path_out)
+        print("Reco_optimized written to : ", reco_path_out)
