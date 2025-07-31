@@ -95,9 +95,10 @@ csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 50
-start_date = "2012-06-01 00:00:00"  # TODO: run also for _REF simulation
-end_date = "2012-09-01 00:00:00"
-use_dPdT_54km = True
+start_date = "2012-01-01 00:00:00"  # TODO: run also for _REF simulation
+end_date = "2012-12-30 00:00:00"
+use_dPdT_54km = False
+ref_sim = ""  # "_REF" to use REF simulation or "" for tuned values
 ###################################
 
 wrf_paths = [
@@ -144,8 +145,8 @@ for wrf_file in file_list:
     # Load the NetCDF file
     wrf_file_d02 = wrf_file.replace("d01", "d02")
     nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_d02), "r")
-    GPP_1km = -nc_fid1km.variables["EBIO_GEE"][0, 0, 10:-10, 10:-10]
-    RECO_1km = nc_fid1km.variables["EBIO_RES"][0, 0, 10:-10, 10:-10]
+    GPP_1km = -nc_fid1km.variables[f"EBIO_GEE{ref_sim}"][0, 0, 10:-10, 10:-10]
+    RECO_1km = nc_fid1km.variables[f"EBIO_RES{ref_sim}"][0, 0, 10:-10, 10:-10]
     HGT_1km = nc_fid1km.variables["HGT"][0, 10:-10, 10:-10]
     T2_1km = nc_fid1km.variables["T2"][0, 10:-10, 10:-10] - 273.15
     lats_fine = nc_fid1km.variables["XLAT"][0, 10:-10, 10:-10]
@@ -156,8 +157,8 @@ for wrf_file in file_list:
 
     if use_dPdT_54km:
         nc_fid54km = nc.Dataset(os.path.join(wrf_paths[4], wrf_file), "r")
-        dGPPdT_ref54 = -nc_fid54km.variables["EBIO_GEE_DPDT"][0, 0, :, :]
-        dRECOdT_ref54 = nc_fid54km.variables["EBIO_RES_DPDT"][0, 0, :, :]
+        dGPPdT_ref54 = -nc_fid54km.variables[f"EBIO_GEE_DPDT{ref_sim}"][0, 0, :, :]
+        dRECOdT_ref54 = nc_fid54km.variables[f"EBIO_RES_DPDT{ref_sim}"][0, 0, :, :]
         lats_coarsegrid = nc_fid54km.variables["XLAT"][0, :, :]
         lons_coarsegrid = nc_fid54km.variables["XLONG"][0, :, :]
         ref_tag = "_54km"
@@ -180,16 +181,20 @@ for wrf_file in file_list:
             interp_method,
         )
     else:
-        dGPPdT_ref = -nc_fid1km.variables["EBIO_GEE_DPDT"][0, 0, 10:-10, 10:-10]
-        dRECOdT_ref = nc_fid1km.variables["EBIO_RES_DPDT"][0, 0, 10:-10, 10:-10]
+        dGPPdT_ref = -nc_fid1km.variables[f"EBIO_GEE_DPDT{ref_sim}"][
+            0, 0, 10:-10, 10:-10
+        ]
+        dRECOdT_ref = nc_fid1km.variables[f"EBIO_RES_DPDT{ref_sim}"][
+            0, 0, 10:-10, 10:-10
+        ]
         ref_tag = ""
 
     for wrf_path in wrf_paths[1:]:
         nc_fidcoarsegrid = nc.Dataset(os.path.join(wrf_path, wrf_file), "r")
-        GPP_coarsegrid = -nc_fidcoarsegrid.variables["EBIO_GEE"][0, 0, :, :]
-        RECO_coarsegrid = nc_fidcoarsegrid.variables["EBIO_RES"][0, 0, :, :]
-        dGPPdT_coarsegrid = -nc_fidcoarsegrid.variables["EBIO_GEE_DPDT"][:]
-        dRECOdT_coarsegrid = nc_fidcoarsegrid.variables["EBIO_RES_DPDT"][:]
+        GPP_coarsegrid = -nc_fidcoarsegrid.variables[f"EBIO_GEE{ref_sim}"][0, 0, :, :]
+        RECO_coarsegrid = nc_fidcoarsegrid.variables[f"EBIO_RES{ref_sim}"][0, 0, :, :]
+        dGPPdT_coarsegrid = -nc_fidcoarsegrid.variables[f"EBIO_GEE_DPDT{ref_sim}"][:]
+        dRECOdT_coarsegrid = nc_fidcoarsegrid.variables[f"EBIO_RES_DPDT{ref_sim}"][:]
         HGT_coarsegrid = nc_fidcoarsegrid.variables["HGT"][0]
         T2_coarsegrid = nc_fidcoarsegrid.variables["T2"][0] - 273.15
         veg_type = nc_fidcoarsegrid.variables["IVGTYP"][0, :, :]
@@ -320,7 +325,7 @@ for wrf_file in file_list:
 
 # Save the DataFrame to a CSV file
 output_file = os.path.join(
-    csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv"
+    csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}{ref_sim}.csv"
 )
 df_out_dPdT.to_csv(output_file, index_label="datetime")
 print(f"Data saved to {output_file}")
