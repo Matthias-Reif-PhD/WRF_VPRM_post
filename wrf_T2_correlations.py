@@ -99,16 +99,18 @@ def extract_datetime_from_filename(filename):
 plot_coeff = True
 plotting_scatter = False
 plotting_scatter_all = False  # TODO: fix this need to be false currently.
-start_date = "2012-06-01 00:00:00"
-end_date = "2012-09-01 00:00:00"
+start_date = "2012-01-01 00:00:00"
+end_date = "2012-12-31 00:00:00"
+# start_date = "2012-06-01 00:00:00"
+# end_date = "2012-09-01 00:00:00"
 hour_start = 6
 hour_end = 17
 T_bin_size = 1
-T_ref_min = 5
-T_ref_max = 35
+T_ref_min = 0
+T_ref_max = 33
 STD_TOPOs = [50]
 STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
-ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
+ref_sim = "_REF"  # "_REF" to use also REF simulation or "" for only tuned values
 subdaily = ""  # "_subdailyC3" or ""
 coarse_domains = ["54km", "9km"]  # , "27km", "9km", "3km"
 
@@ -580,13 +582,14 @@ for coarse_domain in coarse_domains:
 
             if plot_coeff:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
-                ax.set_xlabel(r"$T_{\text{ref}}$ [°C]")
-                ax.set_ylabel("Coefficients [μmol CO2 m² s⁻¹ °C⁻¹]")
-                ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")
+                ax.set_ylim(2, 2) 
+                ax.set_xlabel(r"$T_{\mathrm{ref}}$ °C")
+                ax.set_ylabel("[μmol CO2 m² s⁻¹ °C⁻¹]")
+                # ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")
                 figname = (
                     outfolder
-                    + f"WRF_Tref_coefficients{ref_sim}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.png"
+                    + f"WRF_Tref_coefficients{ref_sim}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.pdf"
                 )
-                plt.savefig(figname)
+                plt.savefig(figname, bbox_inches="tight")
                 plt.close()
             del df_coeff

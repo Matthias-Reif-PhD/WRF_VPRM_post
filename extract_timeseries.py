@@ -12,6 +12,78 @@ from scipy.interpolate import RegularGridInterpolator
 from collections import defaultdict
 
 
+
+def compute_slope_aspect(hgt, lats, lons):
+    lat_rad = np.radians(lats)
+    dy = 111000  # meters per degree latitude
+    dx = 111000 * np.cos(lat_rad)  # meters per degree longitude
+
+    dz_dy = np.gradient(hgt, axis=0) / dy
+    dz_dx = np.gradient(hgt, axis=1) / dx
+
+    slope_rad = np.arctan(np.sqrt(dz_dx**2 + dz_dy**2))
+    slope = np.degrees(slope_rad)
+
+    aspect = (np.degrees(np.arctan2(dz_dy, -dz_dx)) + 360) % 360
+    return slope, aspect
+
+
+def haversine_dist(lat1, lon1, lat2, lon2):
+    R = 6371.0  # Earth radius in km
+    dlat = np.radians(lat2 - lat1)
+    dlon = np.radians(lon2 - lon1)
+    a = (
+        np.sin(dlat / 2) ** 2
+        + np.cos(np.radians(lat1)) * np.cos(np.radians(lat2)) * np.sin(dlon / 2) ** 2
+    )
+    c = 2 * np.arcsin(np.sqrt(a))
+    return R * c
+
+
+def find_nearest_grid_hgt_sa(
+    lat_target, lon_target, lats, lons, location_pft, IVGTYP_vprm, hgt, hgt_site, radius
+):
+    slope, aspect = compute_slope_aspect(hgt, lats, lons)
+
+    flat_idx = np.abs(lats - lat_target) + np.abs(lons - lon_target)
+    min_flat_idx = np.argmin(flat_idx)
+    lat_idx, lon_idx = np.unravel_index(min_flat_idx, lats.shape)
+    target_slope = slope[lat_idx, lon_idx]
+    target_aspect = aspect[lat_idx, lon_idx]
+
+    pft_mask = IVGTYP_vprm == location_pft
+    dist_km = haversine_dist(lat_target, lon_target, lats, lons)
+    dist_mask = dist_km <= abs(radius)
+
+    height_diff = np.abs(hgt - hgt_site)
+    slope_diff = np.abs(slope - target_slope)
+    aspect_diff = np.abs((aspect - target_aspect + 180) % 360 - 180)
+
+    aspect_mask = aspect_diff <= 20
+    slope_mask = slope_diff <= 10
+
+    combined_mask = pft_mask & dist_mask & aspect_mask & slope_mask
+
+    if not np.any(combined_mask):
+        relaxed_mask = pft_mask & dist_mask
+        if np.any(relaxed_mask):
+            masked_height_diff = np.where(relaxed_mask, height_diff, np.inf)
+            min_idx = np.unravel_index(np.argmin(masked_height_diff), hgt.shape)
+            min_dist = dist_km[min_idx]
+            return min_dist, min_idx
+        else:
+            fallback_flat_idx = np.argmin(dist_km)
+            fallback_idx = np.unravel_index(fallback_flat_idx, lats.shape)
+            fallback_dist = dist_km[fallback_idx]
+            return fallback_dist, fallback_idx
+
+    masked_height_diff = np.where(combined_mask, height_diff, np.inf)
+    min_idx = np.unravel_index(np.argmin(masked_height_diff), hgt.shape)
+    min_dist = dist_km[min_idx]
+
+    return min_dist, min_idx, target_slope,target_aspect
+
+
 def get_int_var(lat_target, lon_target, lats, lons, WRF_var):
     interpolator = RegularGridInterpolator((lats[:, 0], lons[0, :]), WRF_var)
     interpolated_value = interpolator((lat_target, lon_target))
@@ -555,7 +627,7 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
             elif method == "NNhgt":
                 # Get nearest neighbour of GEE, RES, and T2 for the current location and append to the row
 
-                dist_km, grid_idx = find_nearest_grid_hgt(
+                dist_km, grid_idx , target_slope,target_aspect = find_nearest_grid_hgt_sa(
                     lat_target,
                     lon_target,
                     xlat,
@@ -668,8 +740,8 @@ def main():
         subday = args.subday
     else:  # to run locally for single cases
         subday = ""  # "subdailyC3_" or "" for daily data
-        start_date = "2012-06-01 00:00:00"
-        end_date = "2012-09-01 00:00:00"
+        start_date = "2012-01-01 00:00:00"
+        end_date = "2012-12-31 00:00:00"
         wrf_paths = [
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
             "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",

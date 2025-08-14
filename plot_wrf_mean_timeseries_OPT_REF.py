@@ -45,8 +45,7 @@ def plot_timeseries_by_resolution(
             df[series_col] = df[series_col].resample("h").interpolate("linear")
 
         y = df[series_col].dropna()
-        y_ref = df_ref[series_col].dropna() if ref_sim and res != "CAMS" else None
-
+            
         label_opt = series_col if res == "CAMS" else f"{series_col} (OPT)"
         grouped = y.groupby(y.index.date)
         valid_days = [
@@ -70,22 +69,24 @@ def plot_timeseries_by_resolution(
                 )
             current_x += len(group) + 1
         plt.plot([], [], label=label_opt, linestyle="-", color=color)
-
+        
+        y_ref = df_ref[series_col].dropna() if ref_sim and res != "CAMS" else None
         if y_ref is not None:
-            label_ref = f"{series_col} (REF)"
-            grouped_ref = y_ref.groupby(y_ref.index.date)
-            valid_days_ref = [
-                (date, group)
-                for date, group in grouped_ref
-                if not group.dropna().eq(0).all()
-            ]
+            if column != "T2" and column != "SWDOWN":
+                label_ref = f"{series_col} (REF)"
+                grouped_ref = y_ref.groupby(y_ref.index.date)
+                valid_days_ref = [
+                    (date, group)
+                    for date, group in grouped_ref
+                    if not group.dropna().eq(0).all()
+                ]
 
-            current_x = 0
-            for i, (date, group) in enumerate(valid_days_ref):
-                x = np.arange(len(group)) + current_x
-                plt.plot(x, group.values, linestyle="--", linewidth=1.5, color=color)
-                current_x += len(group) + 1
-            plt.plot([], [], label=label_ref, linestyle="--", color=color)
+                current_x = 0
+                for i, (date, group) in enumerate(valid_days_ref):
+                    x = np.arange(len(group)) + current_x
+                    plt.plot(x, group.values, linestyle="--", linewidth=1.5, color=color)
+                    current_x += len(group) + 1
+                plt.plot([], [], label=label_ref, linestyle="--", color=color)
 
     plt.xticks(xticks, xticklabels, ha="left")
     plt.xlabel("Date", fontsize=14)
@@ -130,15 +131,15 @@ def plot_hourly_averages(
         )
 
         if ref_sim and res != "CAMS":
-            series_ref = hourly_avg_ref[f"{column}_{res}"].dropna()
-
-            plt.plot(
-                series_ref.index,
-                series_ref,
-                label=f"{column}_{res} (REF)",
-                linestyle="--",
-                color=resolution_colors[res],
-            )
+            if column != "T2" and column != "SWDOWN":
+                series_ref = hourly_avg_ref[f"{column}_{res}"].dropna()
+                plt.plot(
+                    series_ref.index,
+                    series_ref,
+                    label=f"{column}_{res} (REF)",
+                    linestyle="--",
+                    color=resolution_colors[res],
+                )
 
     plt.xlabel("Hour", fontsize=14)
     plt.ylabel(f"{column} {unit}", fontsize=14)
@@ -300,14 +301,16 @@ def compute_hourly_means_and_differences_reshaped(
 def main():
     csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
     outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
-    start_date, end_date = "2012-06-01 00:00:00", "2012-09-01 00:00:00"
+    # start_date, end_date = "2012-01-01 00:00:00", "2012-12-30 00:00:00"
+    start_date = "2012-06-01 00:00:00"  # TODO: run for each season jan/Feb/Mar - April... 
+    end_date = "2012-06-20 00:00:00"
     STD_TOPO = 50
     ref_sim = True
     convert_to_gC = 60 * 60 * 24 * 1e-6 * 12
 
-    columns = ["GPP", "RECO", "NEE", "T2"]
-    units = [" [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [°C]"]
-    resolutions = ["1km", "9km", "54km", "CAMS"]
+    columns = ["GPP", "RECO", "NEE", "T2", "SWDOWN"]
+    units = [" [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [°C]", " [W/m²]"]
+    resolutions = ["1km", "9km", "54km", "CAMS"]  # 
     resolutions_diff = ["54km", "9km"]
 
     merged_df_gt = pd.read_csv(

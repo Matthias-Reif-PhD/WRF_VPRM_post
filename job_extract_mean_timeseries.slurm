@@ -3,7 +3,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu=2G
-#SBATCH --time=900
+#SBATCH --time=1200
 
 module purge
 module load Anaconda3/2023.03/miniconda-base-2023.03

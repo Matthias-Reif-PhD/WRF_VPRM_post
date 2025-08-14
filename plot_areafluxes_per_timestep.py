@@ -6,9 +6,6 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy.ndimage import binary_erosion, distance_transform_edt
 
-import numpy as np
-from scipy.ndimage import binary_erosion, distance_transform_edt
-
 
 def generate_coastal_mask(
     veg_type: np.ndarray, buffer_km: float = 50.0, grid_spacing_km: float = 3.0
@@ -89,7 +86,7 @@ dx = "_54km"
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 50
-dateime = "2012-07-27_12"
+dateime = "2012-07-27_08"
 subfolder = ""  # "" or "_cloudy" TODO _rainy
 wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
 wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
@@ -102,6 +99,9 @@ dGPPdT = -nc_fid54km.variables["EBIO_GEE_DPDT"][:]
 dGPPdT_1km = -nc_fid1km.variables["EBIO_GEE_DPDT"][0, 0, 10:-10, 10:-10]
 GPP_1km = -nc_fid1km.variables["EBIO_GEE"][0, 0, 10:-10, 10:-10]
 GPP_54km = -nc_fid54km.variables["EBIO_GEE"][0, 0, :, :]
+# add "SWDOWN"
+SWDOWN_1km = nc_fid1km.variables["SWDOWN"][0, 10:-10, 10:-10]
+SWDOWN_54km = nc_fid54km.variables["SWDOWN"][0]
 
 dRECOdT = nc_fid54km.variables["EBIO_RES_DPDT"][:]
 dRECOdT_1km = nc_fid1km.variables["EBIO_RES_DPDT"][0, 0, 10:-10, 10:-10]
@@ -190,10 +190,26 @@ proj_dRECOdT_54km = proj_on_finer_WRF_grid(
     dRECOdT_1km,
     interp_method,
 )
+# add "SWDOWN"
+proj_SWDOWN_54km = proj_on_finer_WRF_grid(
+    lats_54km,
+    lons_54km,
+    SWDOWN_54km,
+    lats_fine,
+    lons_fine,
+    SWDOWN_1km,
+    interp_method,
+)
 
 diff_HGT = proj_HGT_54km - HGT_1km
 diff_HGT[proj_landmask_54km * stdh_mask == 0] = np.nan
 conv_factor = 1 / 3600
+
+# limit value for max dGPPdT between 0-5°, below 0 its set to nan
+val_at5C = 1
+dGPPdT_1km[T2_1km < 0] = np.nan
+mask_0to5 = (T2_1km >= 0) & (T2_1km <= 5)
+dGPPdT_1km[mask_0to5] = val_at5C
 
 dT_calc = diff_HGT / 1000 * temp_gradient
 dT_model = proj_T2_54km - T2_1km  # TODO why converting sign?
@@ -205,7 +221,11 @@ dRECO_model = dRECOdT_1km * conv_factor * dT_model
 dT_threshold = 1.3  # K, or set to a value appropriate for your data
 safe_dT_model = np.where(np.abs(dT_model) > dT_threshold, dT_model, np.nan)
 dGPPdT_real = dGPP_real / safe_dT_model
+dSWDOWN = proj_SWDOWN_54km - SWDOWN_1km
 
+SWDOWN_1km[proj_landmask_54km * stdh_mask == 0] = np.nan
+proj_SWDOWN_54km[proj_landmask_54km * stdh_mask == 0] = np.nan
+dSWDOWN[proj_landmask_54km * stdh_mask == 0] = np.nan
 stdh_mask[T2_1km < 5] = False
 dT_calc[proj_landmask_54km * stdh_mask == 0] = np.nan
 dT_model[proj_landmask_54km * stdh_mask == 0] = np.nan
@@ -261,6 +281,32 @@ def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
     else:
         plt.show()
 
+
+styled_imshow_plot(
+    proj_SWDOWN_54km,
+    600,
+    900,
+    "YlOrRd",
+    "SWDOWN [W/m²]",
+    "SWDOWN_54km",
+)
+styled_imshow_plot(
+    SWDOWN_1km,
+    600,
+    900,
+    "YlOrRd",
+    "SWDOWN [W/m²]",
+    "SWDOWN_1km",
+)
+
+styled_imshow_plot(
+    dSWDOWN,
+    -100,
+    100,
+    "RdBu",
+    "ΔSWDOWN [W/m²]",
+    "SWDOWN_54-1km",
+)
 
 # CLDFRC_max
 styled_imshow_plot(CLDFRC_1km_max, 0, 10, "Blues", "cloud fraction [%]", "CLDFRC_1km")

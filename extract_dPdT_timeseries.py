@@ -95,10 +95,11 @@ csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 50
-start_date = "2012-01-01 00:00:00"  # TODO: run also for _REF simulation
+start_date = "2012-01-01 00:00:00" 
 end_date = "2012-12-30 00:00:00"
 use_dPdT_54km = False
-ref_sim = ""  # "_REF" to use REF simulation or "" for tuned values
+ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
+val_at5C = 1  # limit value for max dGPPdT between 0-5°, below 0 its set to nan
 ###################################
 
 wrf_paths = [
@@ -141,7 +142,6 @@ for day in sorted(file_by_day.keys()):
 df_out_dPdT = pd.DataFrame()
 
 for wrf_file in file_list:
-
     # Load the NetCDF file
     wrf_file_d02 = wrf_file.replace("d01", "d02")
     nc_fid1km = nc.Dataset(os.path.join(wrf_paths[0], wrf_file_d02), "r")
@@ -180,6 +180,11 @@ for wrf_file in file_list:
             RECO_1km,
             interp_method,
         )
+        # TODO:
+        # dGPPdT_ref[T2_1km < 0] = np.nan
+        # mask_0to5 = (T2_1km >= 0) & (T2_1km <= 5)
+        # val_at5C = 1
+        # dGPPdT_ref[mask_0to5] = val_at5C
     else:
         dGPPdT_ref = -nc_fid1km.variables[f"EBIO_GEE_DPDT{ref_sim}"][
             0, 0, 10:-10, 10:-10
@@ -188,6 +193,10 @@ for wrf_file in file_list:
             0, 0, 10:-10, 10:-10
         ]
         ref_tag = ""
+
+        dGPPdT_ref[T2_1km < 0] = np.nan
+        mask_0to5 = (T2_1km >= 0) & (T2_1km <= 5)
+        dGPPdT_ref[mask_0to5] = val_at5C
 
     for wrf_path in wrf_paths[1:]:
         nc_fidcoarsegrid = nc.Dataset(os.path.join(wrf_path, wrf_file), "r")
