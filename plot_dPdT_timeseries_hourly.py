@@ -15,7 +15,7 @@ outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-30 00:00:00"
 ref_tag = ""
-STD_TOPO = 50
+STD_TOPO = 200
 resolutions = ["54km", "9km"]
 variable_groups = {
     "dT": "ΔT [°C]",
@@ -135,7 +135,10 @@ def plot_combined(df, df_ref, variable_groups):
         plt.savefig(plotname, bbox_inches="tight")
         plt.close()
 
-def plot_gpp_percent_explained(df, df_ref,variable_groups, resolutions, outfolder, STD_TOPO, start_date, end_date):
+
+def plot_gpp_percent_explained(
+    df, df_ref, variable_groups, resolutions, outfolder, STD_TOPO, start_date, end_date
+):
     for var_prefix, ylabel in variable_groups.items():
         plt.figure(figsize=(12, 6))
         width = 0.4
@@ -151,7 +154,10 @@ def plot_gpp_percent_explained(df, df_ref,variable_groups, resolutions, outfolde
                 print(f"Missing OPT columns for {res}. Skipping...")
                 continue
 
-            if col_real_ref not in df_ref.columns or col_model_ref not in df_ref.columns:
+            if (
+                col_real_ref not in df_ref.columns
+                or col_model_ref not in df_ref.columns
+            ):
                 print(f"Missing REF columns for {res}. Skipping...")
                 continue
 
@@ -177,11 +183,15 @@ def plot_gpp_percent_explained(df, df_ref,variable_groups, resolutions, outfolde
             # --- REF ---
             real_series_ref = df_ref[col_real_ref].dropna()
             model_series_ref = df_ref[col_model_ref].dropna()
-            common_index_ref = real_series_ref.index.intersection(model_series_ref.index)
+            common_index_ref = real_series_ref.index.intersection(
+                model_series_ref.index
+            )
             real_series_ref = real_series_ref.loc[common_index_ref]
             model_series_ref = model_series_ref.loc[common_index_ref]
             real_hourly_ref = real_series_ref.groupby(real_series_ref.index.hour).mean()
-            model_hourly_ref = model_series_ref.groupby(model_series_ref.index.hour).mean()
+            model_hourly_ref = model_series_ref.groupby(
+                model_series_ref.index.hour
+            ).mean()
             percent_explained_ref = (model_hourly_ref / real_hourly_ref) * 100
             mean_percent_ref = percent_explained_ref.mean()
             plt.bar(
@@ -210,7 +220,10 @@ def plot_gpp_percent_explained(df, df_ref,variable_groups, resolutions, outfolde
         plt.savefig(outpath, bbox_inches="tight")
         plt.close()
 
-def commonality_analysis_plot(df, df_ref, variable_groups, resolutions, outfolder, start_date, end_date):
+
+def commonality_analysis_plot(
+    df, df_ref, variable_groups, resolutions, outfolder, start_date, end_date
+):
     for var_prefix, ylabel in variable_groups.items():
         plt.figure(figsize=(10, 6))
         width = 0.35
@@ -255,9 +268,12 @@ def commonality_analysis_plot(df, df_ref, variable_groups, resolutions, outfolde
                     width=width,
                     color=resolution_colors[res],
                     alpha=alpha,
-                    label=f"{res} {label}"
-                    if f"{res} {label}" not in plt.gca().get_legend_handles_labels()[1]
-                    else None,
+                    label=(
+                        f"{res} {label}"
+                        if f"{res} {label}"
+                        not in plt.gca().get_legend_handles_labels()[1]
+                        else None
+                    ),
                 )
 
         plt.xticks(bar_positions, [f"{res}" for res in resolutions])
@@ -280,8 +296,11 @@ plot_combined(df, df_ref, variable_groups)
 variable_subset = {
     "dGPP": "ΔGPP ",
     "dRECO": "ΔRECO ",
-    }
-plot_gpp_percent_explained(df, df_ref,variable_subset, resolutions, outfolder, STD_TOPO, start_date, end_date)
+}
+plot_gpp_percent_explained(
+    df, df_ref, variable_subset, resolutions, outfolder, STD_TOPO, start_date, end_date
+)
 
-commonality_analysis_plot(df, df_ref, variable_subset, resolutions, outfolder, start_date, end_date)
-
+commonality_analysis_plot(
+    df, df_ref, variable_subset, resolutions, outfolder, start_date, end_date
+)

@@ -45,7 +45,7 @@ def plot_timeseries_by_resolution(
             df[series_col] = df[series_col].resample("h").interpolate("linear")
 
         y = df[series_col].dropna()
-            
+
         label_opt = series_col if res == "CAMS" else f"{series_col} (OPT)"
         grouped = y.groupby(y.index.date)
         valid_days = [
@@ -69,7 +69,7 @@ def plot_timeseries_by_resolution(
                 )
             current_x += len(group) + 1
         plt.plot([], [], label=label_opt, linestyle="-", color=color)
-        
+
         y_ref = df_ref[series_col].dropna() if ref_sim and res != "CAMS" else None
         if y_ref is not None:
             if column != "T2" and column != "SWDOWN":
@@ -84,7 +84,9 @@ def plot_timeseries_by_resolution(
                 current_x = 0
                 for i, (date, group) in enumerate(valid_days_ref):
                     x = np.arange(len(group)) + current_x
-                    plt.plot(x, group.values, linestyle="--", linewidth=1.5, color=color)
+                    plt.plot(
+                        x, group.values, linestyle="--", linewidth=1.5, color=color
+                    )
                     current_x += len(group) + 1
                 plt.plot([], [], label=label_ref, linestyle="--", color=color)
 
@@ -144,6 +146,7 @@ def plot_hourly_averages(
     plt.xlabel("Hour", fontsize=14)
     plt.ylabel(f"{column} {unit}", fontsize=14)
     plt.grid(True, linestyle="--", alpha=0.5)
+    plt.xticks([0, 6, 12, 18, 24])
     plt.legend(fontsize=10)
     plt.tight_layout()
     plt.savefig(
@@ -197,6 +200,7 @@ def plot_hourly_differences(
     plt.ylabel(f"{column} {unit}", fontsize=14)
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.legend(fontsize=10)
+    plt.xticks([0, 6, 12, 18, 24])
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
@@ -301,16 +305,16 @@ def compute_hourly_means_and_differences_reshaped(
 def main():
     csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
     outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
-    # start_date, end_date = "2012-01-01 00:00:00", "2012-12-30 00:00:00"
-    start_date = "2012-06-01 00:00:00"  # TODO: run for each season jan/Feb/Mar - April... 
-    end_date = "2012-06-20 00:00:00"
-    STD_TOPO = 50
+    start_date, end_date = "2012-01-01 00:00:00", "2012-12-30 00:00:00"
+    # start_date = "2012-06-01 00:00:00"  # TODO: run for each season jan/Feb/Mar - April...
+    # end_date = "2012-06-20 00:00:00"
+    STD_TOPO = 200
     ref_sim = True
     convert_to_gC = 60 * 60 * 24 * 1e-6 * 12
 
     columns = ["GPP", "RECO", "NEE", "T2", "SWDOWN"]
     units = [" [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [°C]", " [W/m²]"]
-    resolutions = ["1km", "9km", "54km", "CAMS"]  # 
+    resolutions = ["1km", "9km", "54km", "CAMS"]  #
     resolutions_diff = ["54km", "9km"]
 
     merged_df_gt = pd.read_csv(

@@ -107,8 +107,8 @@ hour_start = 6
 hour_end = 17
 T_bin_size = 1
 T_ref_min = 0
-T_ref_max = 33
-STD_TOPOs = [50]
+T_ref_max = 30
+STD_TOPOs = [200]
 STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
 ref_sim = "_REF"  # "_REF" to use also REF simulation or "" for only tuned values
 subdaily = ""  # "_subdailyC3" or ""
@@ -582,7 +582,8 @@ for coarse_domain in coarse_domains:
 
             if plot_coeff:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
-                ax.set_ylim(2, 2) 
+                ax.set_ylim(-3, 3)
+                ax.set_xlim(T_ref_min, T_ref_max)
                 ax.set_xlabel(r"$T_{\mathrm{ref}}$ °C")
                 ax.set_ylabel("[μmol CO2 m² s⁻¹ °C⁻¹]")
                 # ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")

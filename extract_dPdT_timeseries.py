@@ -94,11 +94,11 @@ def extract_datetime_from_filename(filename):
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
-STD_TOPO = 50
-start_date = "2012-01-01 00:00:00" 
+STD_TOPO = 200
+start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-30 00:00:00"
 use_dPdT_54km = False
-ref_sim = "_REF"  # "_REF" to use REF simulation or "" for tuned values
+ref_sim = ""  # "_REF" to use REF simulation or "" for tuned values
 val_at5C = 1  # limit value for max dGPPdT between 0-5°, below 0 its set to nan
 ###################################
 

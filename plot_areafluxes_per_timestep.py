@@ -5,6 +5,7 @@ from scipy.interpolate import griddata
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy.ndimage import binary_erosion, distance_transform_edt
+import xarray as xr
 
 
 def generate_coastal_mask(
@@ -85,11 +86,14 @@ save_plot = True
 dx = "_54km"
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
-STD_TOPO = 50
+STD_TOPO = 200
+# Set time
 dateime = "2012-07-27_08"
 subfolder = ""  # "" or "_cloudy" TODO _rainy
 wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
 wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
+t_file_fra = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d02_2012_1km/VPRM_input_VEG_FRA_d02_2012.nc"
+t_file_fra_d01 = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d01_2012_54km/VPRM_input_VEG_FRA_d01_2012.nc"
 ################################
 
 # Load the NetCDF file
@@ -121,6 +125,32 @@ lons_54km = nc_fid54km.variables["XLONG"][0, :, :]
 CLDFRC_1km = nc_fid1km.variables["CLDFRA"][0, :, 10:-10, 10:-10]
 CLDFRC_54km = nc_fid54km.variables["CLDFRA"][0, :, :, :]
 
+# --- Load vegetation fraction map ---
+ds = xr.open_dataset(t_file_fra)
+ds_d01 = xr.open_dataset(t_file_fra_d01)
+veg_frac_map = ds["vegetation_fraction_map"].isel(
+    south_north=slice(10, -10), west_east=slice(10, -10)
+)
+
+veg_frac_map_d01 = ds_d01["vegetation_fraction_map"]
+
+# lat = ds["lat"].isel(south_north=slice(1, -1), west_east=slice(1, -1)).values
+# lon = ds["lon"].isel(south_north=slice(1, -1), west_east=slice(1, -1)).values
+# lat_d01 = ds_d01["lat"].isel(south_north=slice(1, -1), west_east=slice(1, -1)).values
+# lon_d01 = ds_d01["lon"].isel(south_north=slice(1, -1), west_east=slice(1, -1)).values
+
+
+PAR0_of_PFT = {
+    "ENF": 316.96,
+    "DBF": 310.78,
+    "MF": 428.83,
+    "SHB": 363.00,
+    "WET": 682.00,
+    "CRO": 595.86,
+    "GRA": 406.28,
+    "OTH": 0.00,
+}
+SWDOWN_TO_PAR = 0.505
 
 # GPP_54km
 proj_GPP_54km = proj_on_finer_WRF_grid(
@@ -190,11 +220,33 @@ proj_dRECOdT_54km = proj_on_finer_WRF_grid(
     dRECOdT_1km,
     interp_method,
 )
+
 # add "SWDOWN"
 proj_SWDOWN_54km = proj_on_finer_WRF_grid(
     lats_54km,
     lons_54km,
     SWDOWN_54km,
+    lats_fine,
+    lons_fine,
+    SWDOWN_1km,
+    interp_method,
+)
+# RAD_scale_54km
+RAD_scale_54km = np.zeros_like(SWDOWN_54km)
+for idx, pft in enumerate(PAR0_of_PFT.keys()):
+    PAR0 = PAR0_of_PFT[pft]
+    if PAR0 > 0:
+        vegfrac = veg_frac_map_d01[idx, :, :].values
+        RAD_scale_54km += (
+            (1 / (1 + (SWDOWN_54km * SWDOWN_TO_PAR) / PAR0))
+            * SWDOWN_54km
+            * SWDOWN_TO_PAR
+        ) * vegfrac
+
+proj_RAD_scale_54km = proj_on_finer_WRF_grid(
+    lats_54km,
+    lons_54km,
+    RAD_scale_54km,
     lats_fine,
     lons_fine,
     SWDOWN_1km,
@@ -223,9 +275,33 @@ safe_dT_model = np.where(np.abs(dT_model) > dT_threshold, dT_model, np.nan)
 dGPPdT_real = dGPP_real / safe_dT_model
 dSWDOWN = proj_SWDOWN_54km - SWDOWN_1km
 
+
+PAR0 = 400
+RAD_scale_1km_test = (
+    (1 / (1 + (SWDOWN_1km * SWDOWN_TO_PAR) / PAR0)) * SWDOWN_1km * SWDOWN_TO_PAR
+)
+
+RAD_scale_1km = np.zeros_like(SWDOWN_1km)
+for idx, pft in enumerate(PAR0_of_PFT.keys()):
+    PAR0 = PAR0_of_PFT[pft]
+    if PAR0 > 0:
+        vegfrac = veg_frac_map[idx, :, :].values
+        RAD_scale_1km += (
+            (1 / (1 + (SWDOWN_1km * SWDOWN_TO_PAR) / PAR0)) * SWDOWN_1km * SWDOWN_TO_PAR
+        ) * vegfrac
+mask_idx8_100 = veg_frac_map[7, :, :].values < 1.0
+
+dRAD_scale_test = (RAD_scale_1km_test - RAD_scale_1km) / RAD_scale_1km_test * 100
+
+dRAD_scale = (proj_RAD_scale_54km - RAD_scale_1km) / proj_RAD_scale_54km * 100
+
 SWDOWN_1km[proj_landmask_54km * stdh_mask == 0] = np.nan
 proj_SWDOWN_54km[proj_landmask_54km * stdh_mask == 0] = np.nan
 dSWDOWN[proj_landmask_54km * stdh_mask == 0] = np.nan
+RAD_scale_1km[proj_landmask_54km * stdh_mask * mask_idx8_100 == 0] = np.nan
+proj_RAD_scale_54km[proj_landmask_54km * stdh_mask == 0] = np.nan
+dRAD_scale[proj_landmask_54km * stdh_mask == 0] = np.nan
+# mask out fluxes where T is below 5°C
 stdh_mask[T2_1km < 5] = False
 dT_calc[proj_landmask_54km * stdh_mask == 0] = np.nan
 dT_model[proj_landmask_54km * stdh_mask == 0] = np.nan
@@ -283,17 +359,43 @@ def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
 
 
 styled_imshow_plot(
+    proj_RAD_scale_54km,
+    np.nanmin(RAD_scale_54km),
+    np.nanmax(RAD_scale_54km),
+    "YlOrRd",
+    r"RAD$_{scale}$ [W/m$^2$]",
+    "RAD_scale_54km",
+)
+styled_imshow_plot(
+    RAD_scale_1km,
+    np.nanmin(RAD_scale_1km),
+    np.nanmax(RAD_scale_1km),
+    "YlOrRd",
+    r"RAD$_{scale}$ [W/m$^2$]",
+    "RAD_scale_1km",
+)
+
+styled_imshow_plot(
+    dRAD_scale,
+    np.nanmin(dRAD_scale),
+    np.nanmax(dRAD_scale),
+    "RdBu",
+    r"$\Delta \text{RAD}_{scale}$ [%]",
+    "RAD_scale_54-1km",
+)
+
+styled_imshow_plot(
     proj_SWDOWN_54km,
-    600,
-    900,
+    np.nanmin(proj_SWDOWN_54km),
+    np.nanmax(proj_SWDOWN_54km),
     "YlOrRd",
     "SWDOWN [W/m²]",
     "SWDOWN_54km",
 )
 styled_imshow_plot(
     SWDOWN_1km,
-    600,
-    900,
+    np.nanmin(SWDOWN_1km),
+    np.nanmax(SWDOWN_1km),
     "YlOrRd",
     "SWDOWN [W/m²]",
     "SWDOWN_1km",
@@ -301,12 +403,14 @@ styled_imshow_plot(
 
 styled_imshow_plot(
     dSWDOWN,
-    -100,
-    100,
+    np.nanmin(dSWDOWN),
+    np.nanmax(dSWDOWN),
     "RdBu",
     "ΔSWDOWN [W/m²]",
     "SWDOWN_54-1km",
 )
+
+styled_imshow_plot(dT_model, -15, 15, "coolwarm_r", "ΔT [C]", "dT_model")
 
 # CLDFRC_max
 styled_imshow_plot(CLDFRC_1km_max, 0, 10, "Blues", "cloud fraction [%]", "CLDFRC_1km")

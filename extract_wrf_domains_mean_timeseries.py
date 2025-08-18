@@ -72,9 +72,9 @@ def extract_datetime_from_filename(filename):
 ################################# INPUT ##############################################
 
 run_Pmodel = False  # set to True if you want to run Pmodel and Migliavacca RECO
-# start_date = "2012-06-01 00:00:00"  # TODO: run for each season jan/Feb/Mar - April... 
+# start_date = "2012-06-01 00:00:00"  # TODO: run for each season jan/Feb/Mar - April...
 # end_date = "2012-06-20 00:00:00"
-start_date = "2012-01-01 00:00:00" 
+start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-30 00:00:00"
 wrf_paths = [
     "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
@@ -86,7 +86,7 @@ wrf_paths = [
 
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 # set standard deviation of topography
-STD_TOPOs = [50]
+STD_TOPOs = [200]
 STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
 ref_sims = ["", "_REF"]  # "_REF" to use REF simulation or "" for tuned values
 
@@ -105,13 +105,13 @@ times_CAMS = CAMS_data.variables["valid_time"]
 # convert from accumulated values to instantaneous
 ssr_acc = CAMS_data.variables["ssrd"][:]  # shape: (time, lat, lon)
 ssr_flux = np.full_like(ssr_acc, np.nan, dtype=np.float64)
-ssr_flux[1:] = np.diff(ssr_acc, axis=0) # 3-hourly, so 10800 seconds
+ssr_flux[1:] = np.diff(ssr_acc, axis=0)  # 3-hourly, so 10800 seconds
 ssr_flux[ssr_flux < 0] = 0
 CAMS_data.variables["ssrd"] = ssr_flux  # Overwrite in memory
 
-CAMS_vars = ["fco2gpp", "fco2rec", "t2m","ssrd"]  
+CAMS_vars = ["fco2gpp", "fco2rec", "t2m", "ssrd"]
 factor_kgC = 1000 / 44.01 * 1000000  # conversion from kgCO2/m2/s to  mumol/m2/s
-CAMS_factors = [factor_kgC, -factor_kgC, 273.15, 1/10800]
+CAMS_factors = [factor_kgC, -factor_kgC, 273.15, 1 / 10800]
 
 WRF_factors = [-1 / 3600, 1 / 3600, 273.15, 1]
 columns = ["GPP", "RECO", "T2", "SWDOWN"]
