@@ -379,7 +379,7 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
         },
         # {
         #     "name": "DE-Lkb_tune",
-        #     "CO2_ID": "_3",
+        #     "CO2_ID": "_3", # REMOVED DE-Lbk - Not enough data
         #     "lat": 49.0996,
         #     "lon": 13.3047,
         #     "pft": 1,  # "ENF",
@@ -395,7 +395,7 @@ def exctract_timeseries(wrf_path, start_date, end_date, method, subday):
         },
         {
             "name": "IT-Ren_tune",
-            "CO2_ID": "_5",
+            "CO2_ID": "_3",
             "lat": 46.5869,
             "lon": 11.4337,
             "pft": 1,  # "ENF",
@@ -754,6 +754,7 @@ def main():
         exctract_timeseries(wrf_path, start_date, end_date, method, subday)
     # exctract_timeseries(wrf_path, start_date, end_date,"interpolate")
 
+#TODO: plot also mean parameters which are in field 5 
 
 if __name__ == "__main__":
     main()

@@ -12,9 +12,11 @@ import pandas as pd
 ############# INPUT ############
 save_plot_maps = False
 save_plot2 = True
+print_output = True
+SWDOWN_TO_PAR = 1 # 0.505
 plots_folder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/components_"
-date = "2012-06-28"
-dx_all = ["_54km","_9km"]
+date = "2012-03-27" # "2012-06-28"
+dx_all = ["_54km","_9km"] # 
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 STD_TOPO = 200
 ##############################
@@ -56,7 +58,7 @@ def plot_lin_pert_results(contribs_grid, residual, driver_names=None):
         axes[j].axis('off')
 
     plt.tight_layout()
-    plt.savefig(f"{plots_folder}_lin_pertubation_panels_{datetime}h.pdf", bbox_inches="tight")
+    plt.savefig(f"{plots_folder}_lin_pertubation_panels_{datetime}h_{dx}.pdf", bbox_inches="tight")
 
 def linear_perturbation_analysis(
     GPP_1km, GPP_d01,
@@ -237,14 +239,14 @@ def proj_on_finer_WRF_grid(
     return proj_var
 
 lin_pert_mean_diffs_df = pd.DataFrame(columns=["dlambda", "dTscale", "dWscale", "dPscale","dPAR" , "dEVI","Residual"])
-mean_diffs_df = pd.DataFrame(columns=["dlambda", "dTscale", "dWscale", "dPscale","dPAR" , "dEVI"])
+mean_diffs_df = pd.DataFrame(columns=["dlambda", "dTscale", "dWscale", "dPscale","dPAR" , "dEVI","dGPP","dGPP_validate","dGPP_lin_per"])
 records = []
 for dx in dx_all:
     for time in range(0,24):
 
         datetime = f"{date}_{time:02d}"
         date = datetime.split("_")[0]
-        subfolder = ""  # "" or "_cloudy" TODO _rainy
+        subfolder = "_pram_err"  # "" or "_cloudy" TODO _rainy
         wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{datetime}:00:00"
         wrfinput_path_d01 = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{datetime}:00:00"
         vprm_input_path_1km = f"/scratch/c7071034/DATA/VPRM_input/vprm_corine_1km/vprm_input_d02_{date}_00:00:00.nc"
@@ -323,7 +325,6 @@ for dx in dx_all:
         lswi_max_map_d01 = np.nan_to_num(lswi_max_map_d01, nan=eps-1.0)
 
         # --- define parameters ---
-        SWDOWN_TO_PAR = 1 # 0.505
         PAR0_of_PFT = {
             "ENF": 316.96,
             "DBF": 310.78,
@@ -355,19 +356,22 @@ for dx in dx_all:
             "OTH": (0.000, 0, 40),
         }
 
-        # calculate scaled values for 1km resolution
+        # init arrays
         PAR_1km = np.zeros_like(SWDOWN_1km)
         Tscale_1km = np.zeros_like(SWDOWN_1km)
         Wscale_1km = np.zeros_like(SWDOWN_1km)
         Pscale_1km = np.zeros_like(SWDOWN_1km)
         EVI_1km = np.zeros_like(SWDOWN_1km)
+        Lambda_1km = np.zeros_like(SWDOWN_1km)
+        GPP_validate_1km = np.zeros_like(SWDOWN_1km)
+
         PAR_d01 = np.zeros_like(SWDOWN_d01)
         Tscale_d01 = np.zeros_like(SWDOWN_d01)
         Wscale_d01 = np.zeros_like(SWDOWN_d01)
         Pscale_d01 = np.zeros_like(SWDOWN_d01)
-        EVI_d01 = np.zeros_like(SWDOWN_d01)
-        GPP_test_1km = np.zeros_like(SWDOWN_1km)
-        GPP_test_d01 = np.zeros_like(SWDOWN_d01)
+        EVI_d01 = np.zeros_like(SWDOWN_d01)        
+        Lambda_d01 = np.zeros_like(SWDOWN_d01)        
+        GPP_validate_d01 = np.zeros_like(SWDOWN_d01)
 
         for m in range(7):
             # --- vegetation fraction ---
@@ -376,7 +380,8 @@ for dx in dx_all:
             vegfrac = np.where(vegfrac < eps, 0.0, vegfrac)   
 
             # --- Lambda --- 
-            Lambda_1km = lambda_of_PFT[list(lambda_of_PFT.keys())[m]] * vegfrac
+            Lambda_temp_1km = lambda_of_PFT[list(lambda_of_PFT.keys())[m]] * vegfrac / SWDOWN_TO_PAR
+            Lambda_1km += Lambda_temp_1km
 
             # --- EVI ---
             EVI_temp_1km = evi_map[0, m, :, :]
@@ -387,8 +392,8 @@ for dx in dx_all:
             PAR0 = PAR0_of_PFT[list(Tvar_of_PFT.keys())[m]]
             if PAR0 > 0:
                 PAR_temp = (
-                    (1 / (1 + (SWDOWN_1km * SWDOWN_TO_PAR) / PAR0))
-                ) * SWDOWN_1km * SWDOWN_TO_PAR
+                    (1 / (1 + (SWDOWN_1km ) / (PAR0* SWDOWN_TO_PAR)))
+                ) * SWDOWN_1km 
                 if np.any(np.isnan(PAR_temp)):
                     # print("Count of NaNs in PAR_temp:", np.sum(np.isnan(PAR_temp)))
                     PAR_temp = np.nan_to_num(PAR_temp, nan=0.0)
@@ -434,15 +439,19 @@ for dx in dx_all:
             Pscale_1km += Pscale_temp_1km * vegfrac
             
             # --- GPP for comparison ---
-            GPP_temp_1km = Lambda_1km * Tscale_tmp  * Wscale_temp_1km * Pscale_temp_1km * PAR_temp * EVI_temp_1km
+            GPP_temp_1km = Lambda_temp_1km * Tscale_tmp  * Wscale_temp_1km * Pscale_temp_1km * PAR_temp * EVI_temp_1km
             GPP_temp_1km[GPP_temp_1km < 0] = 0
-            GPP_test_1km += GPP_temp_1km
+            GPP_validate_1km += GPP_temp_1km
 
 
             ###############################  Domain d01 #################################
             vegfrac_d01 = veg_frac_map_d01[0, m, :, :]
+            vegfrac_d01 = np.where(np.isnan(vegfrac_d01), 0.0, vegfrac_d01)   
+            vegfrac_d01 = np.where(vegfrac_d01 < eps, 0.0, vegfrac_d01)   
+
             # --- Lambda --- 
-            Lambda_d01 = lambda_of_PFT[list(lambda_of_PFT.keys())[m]] * vegfrac_d01
+            Lambda_temp_d01 = lambda_of_PFT[list(lambda_of_PFT.keys())[m]] * vegfrac_d01 / SWDOWN_TO_PAR
+            Lambda_d01 += Lambda_temp_d01
             
             # --- EVI ---
             EVI_temp_d01 = evi_map_d01[0, m, :, :]
@@ -452,8 +461,8 @@ for dx in dx_all:
             PAR0 = PAR0_of_PFT[list(Tvar_of_PFT.keys())[m]]
             if PAR0 > 0:
                 PAR_temp_d01 = (
-                    (1 / (1 + (SWDOWN_d01 * SWDOWN_TO_PAR) / PAR0))
-                ) * SWDOWN_d01 * SWDOWN_TO_PAR
+                    (1 / (1 + (SWDOWN_d01 ) / (PAR0* SWDOWN_TO_PAR)))
+                ) * SWDOWN_d01 
             PAR_d01 += PAR_temp_d01 * vegfrac_d01 
 
             # --- Tscale ---
@@ -492,9 +501,9 @@ for dx in dx_all:
             Pscale_d01 += Pscale_temp_d01 * vegfrac_d01
 
             # --- GPP comparison ---
-            GPP_temp_d01 = Lambda_d01 * Tscale_tmp_d01 * Wscale_temp_d01 * Pscale_temp_d01 * PAR_temp_d01 * EVI_temp_d01
+            GPP_temp_d01 = Lambda_temp_d01 * Tscale_tmp_d01 * Wscale_temp_d01 * Pscale_temp_d01 * PAR_temp_d01 * EVI_temp_d01
             GPP_temp_d01[GPP_temp_d01 < 0] = 0
-            GPP_test_d01 += GPP_temp_d01
+            GPP_validate_d01 += GPP_temp_d01
 
 
         proj_landmask_d01 = proj_on_finer_WRF_grid(
@@ -573,13 +582,13 @@ for dx in dx_all:
             Lambda_1km,
             interp_method,
         )
-        proj_GPP_test_d01 = proj_on_finer_WRF_grid(
+        proj_GPP_validate_d01 = proj_on_finer_WRF_grid(
             lats_d01,
             lons_d01,
-            GPP_test_d01,
+            GPP_validate_d01,
             lats_fine,
             lons_fine,
-            GPP_test_1km,
+            GPP_validate_1km,
             interp_method,
         )
         proj_GPP_WRF_d01 = proj_on_finer_WRF_grid(
@@ -596,28 +605,30 @@ for dx in dx_all:
         # convert true and false to 1 and zero
         stdh_mask_numeric  = stdh_mask.astype(int)
         common_mask = (proj_landmask_d01 * stdh_mask_numeric == 0)
-        all_fields = [PAR_1km, Tscale_1km, Wscale_1km, Pscale_1km,EVI_1km, GPP_WRF_1km,GPP_test_1km, 
-                    proj_PAR_d01, proj_Tscale_d01,proj_Wscale_d01,proj_Pscale_d01, proj_EVI_d01,proj_GPP_test_d01,proj_GPP_WRF_d01] # Residual_1km
+        all_fields = [PAR_1km, Tscale_1km, Wscale_1km, Pscale_1km,EVI_1km, GPP_WRF_1km,GPP_validate_1km, 
+                    proj_PAR_d01, proj_Tscale_d01,proj_Wscale_d01,proj_Pscale_d01, proj_EVI_d01,proj_GPP_validate_d01,proj_GPP_WRF_d01] # Residual_1km
 
         for arr in all_fields:
             arr[common_mask] = np.nan
 
-        GPP_diff_1km = GPP_test_1km - GPP_WRF_1km
-        GPP_diff_d01 = proj_GPP_test_d01 - proj_GPP_WRF_d01
+        GPP_diff_1km = GPP_validate_1km - GPP_WRF_1km
+        GPP_diff_d01 = proj_GPP_validate_d01 - proj_GPP_WRF_d01
 
-        # print("GPP_test_1km: ",np.nanmean(GPP_test_1km))
-        # print("GPP_WRF_1km: ",np.nanmean(GPP_WRF_1km))
-        # print("GPP_diff: ",np.nanmean(GPP_diff_1km))
-        # print("GPP_test_1km NaN count: ",np.isnan(GPP_test_1km).sum())
-        # print("GPP_WRF_1km NaN count: ",np.isnan(GPP_WRF_1km).sum())
-        
-        # print("GPP_test_d01: ",np.nanmean(proj_GPP_test_d01))
-        # print("GPP_WRF_d01: ",np.nanmean(proj_GPP_WRF_d01))
-        # print("GPP_diff_d01: ",np.nanmean(GPP_diff_d01))
-        # print("GPP_test_d01 NaN count: ",np.isnan(proj_GPP_test_d01).sum())
-        # print("GPP_WRF_d01 NaN count: ",np.isnan(proj_GPP_WRF_d01).sum())
+        if print_output:
+            print("GPP_validate_1km: ",np.nanmean(GPP_validate_1km))
+            print("GPP_WRF_1km: ",np.nanmean(GPP_WRF_1km))
+            print("GPP_diff: ",np.nanmean(GPP_diff_1km))
+            print("GPP_validate_1km NaN count: ",np.isnan(GPP_validate_1km).sum())
+            print("GPP_WRF_1km NaN count: ",np.isnan(GPP_WRF_1km).sum())
+            
+            print("GPP_validate_d01: ",np.nanmean(proj_GPP_validate_d01))
+            print("GPP_WRF_d01: ",np.nanmean(proj_GPP_WRF_d01))
+            print("GPP_diff_d01: ",np.nanmean(GPP_diff_d01))
+            print("GPP_validate_d01 NaN count: ",np.isnan(proj_GPP_validate_d01).sum())
+            print("GPP_WRF_d01 NaN count: ",np.isnan(proj_GPP_WRF_d01).sum())
 
         dGPP = proj_GPP_WRF_d01 - GPP_WRF_1km
+        dGPP_validate = proj_GPP_validate_d01 - GPP_validate_1km
         dPAR = proj_PAR_d01 - PAR_1km
         dTscale = proj_Tscale_d01 - Tscale_1km
         dWscale = proj_Wscale_d01 - Wscale_1km
@@ -630,10 +641,42 @@ for dx in dx_all:
         dPscale_mean = np.nanmean(dPscale)
         dEVI_mean = np.nanmean(dEVI)
         dLambda_mean = np.nanmean(dLambda)
+        dGPP_mean = np.nanmean(dGPP)
+        dGPP_validate_mean = np.nanmean(dGPP_validate)
         
-        mean_diffs_df.loc[datetime] = [dLambda_mean, dTscale_mean, dWscale_mean, dPscale_mean, dPAR_mean, dEVI_mean]
         
+        # --- linear_perturbation_analysis ---
+        alphas, contribs, residual = linear_perturbation_analysis(
+            GPP_validate_1km, proj_GPP_validate_d01,
+            Lambda_1km, proj_Lambda_d01,
+            Tscale_1km, proj_Tscale_d01,
+            Wscale_1km, proj_Wscale_d01,
+            Pscale_1km, proj_Pscale_d01,
+            PAR_1km,proj_PAR_d01,
+            EVI_1km, proj_EVI_d01,
+            regularize=True, alpha=1e-6
+        )
+        # Then alphas gives your sensitivities; contribs[0] is ΔGPP_Lambda, contribs[1] is ΔGPP_T, etc.; residual is the unexplained fraction.
+        driver_names = ["dlambda", "dTscale", "dWscale", "dPscale","dPAR" , "dEVI"]
+            
+        mean_contribs = np.nanmean(contribs, axis=(1,2))  # shape (6,)
+        mean_residual = np.nanmean(residual)  
+        lin_pert_mean_diffs_df.loc[datetime] = [mean_contribs[0],mean_contribs[1],mean_contribs[2],mean_contribs[3],mean_contribs[4],mean_contribs[5],mean_residual]
+
+        lin_pert_mean = mean_contribs.sum()+mean_residual
+        mean_diffs_df.loc[datetime] = [dLambda_mean, dTscale_mean, dWscale_mean, dPscale_mean, dPAR_mean, dEVI_mean,dGPP_mean,dGPP_validate_mean,lin_pert_mean]
+
+
+        if print_output:               
+            for name, val in zip(driver_names, mean_contribs):
+                print(f"{name}: {val:.3f} [μmol/m²/s]")
+            print(f"Residual: {mean_residual:.3f} [μmol/m²/s]")
+
+        plot_lin_pert_results(contribs, residual,driver_names)
+
         if save_plot_maps:
+            
+
             styled_imshow_plot(
                 dPscale,
                 np.nanmin(dPscale),
@@ -649,15 +692,6 @@ for dx in dx_all:
                 "YlOrRd",
                 "[-]",
                 "dEVI",
-            )
-            # plot proj_Wscale_d01
-            styled_imshow_plot_d01(
-                Wscale_d01,
-                np.nanmin(Wscale_d01),
-                np.nanmax(Wscale_d01),
-                "YlOrRd",
-                r"W$_{scale}$ [-]",
-                "Wscale_d01",
             )
             styled_imshow_plot(
                 dWscale,
@@ -707,49 +741,32 @@ for dx in dx_all:
                 "[-]",
                 r"EVI",
             )
-
-        # --- linear_perturbation_analysis ---
-        alphas, contribs, residual = linear_perturbation_analysis(
-            GPP_test_1km, proj_GPP_test_d01,
-            Lambda_1km, proj_Lambda_d01,
-            Tscale_1km, proj_Tscale_d01,
-            Wscale_1km, proj_Wscale_d01,
-            Pscale_1km, proj_Pscale_d01,
-            PAR_1km,proj_PAR_d01,
-            EVI_1km, proj_EVI_d01,
-            regularize=True, alpha=1e-6
-        )
-        # Then alphas gives your sensitivities; contribs[0] is ΔGPP_Lambda, contribs[1] is ΔGPP_T, etc.; residual is the unexplained fraction.
-        driver_names = ["dlambda", "dTscale", "dWscale", "dPscale","dPAR" , "dEVI"]
-        # plot_lin_pert_results(contribs, residual,driver_names)
-        mean_contribs = np.nanmean(contribs, axis=(1,2))  # shape (6,)
-        mean_residual = np.nanmean(residual)                    # scalar
-        # for name, val in zip(driver_names, mean_contribs):
-        #     print(f"{name}: {val:.3f} [μmol/m²/s]")
-        # print(f"Residual: {mean_residual:.3f} [μmol/m²/s]")
-        lin_pert_mean_diffs_df.loc[datetime] = [mean_contribs[0],mean_contribs[1],mean_contribs[2],mean_contribs[3],mean_contribs[4],mean_contribs[5],mean_residual]
-
+            # plot proj_Wscale_d01
+            styled_imshow_plot_d01(
+                Wscale_d01,
+                np.nanmin(Wscale_d01),
+                np.nanmax(Wscale_d01),
+                "YlOrRd",
+                r"W$_{scale}$ [-]",
+                "Wscale_d01",
+            )
+        
     if save_plot2:
 
         # --- Subplot 1: Line plot of mean contributions ---
         fig, axes = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
-
-        # Line plot of driver contributions
         axes[0].plot(lin_pert_mean_diffs_df.index, lin_pert_mean_diffs_df[driver_names], marker='o')
         axes[0].plot(lin_pert_mean_diffs_df.index, lin_pert_mean_diffs_df['Residual'], marker='x', linestyle='--', color='k', label='Residual')
         axes[0].set_ylabel('Liner Perturbation ΔGPP [μmol/m²/s]')
         axes[0].legend(driver_names + ['Residual'], loc='upper left')
         # axes[0].set_title(f'Domain-averaged linear contributions over time {dx[1:]}')
         axes[0].grid(True)
-
         # --- Subplot 2: PAR bar + scale variables lines ---
         ax1 = axes[1]
-        # PAR bar
-        PAR_all = mean_diffs_df['dPAR']
-        PAR_all.plot(kind='bar', ax=ax1, color='tab:purple', label='dPAR', alpha=0.3)
+        bars_df = mean_diffs_df[['dPAR']]
+        bars_df.plot(kind='bar', ax=ax1, color='tab:purple', label='dPAR', alpha=0.5)
         ax1.set_ylabel('dPAR [μmol/m²/s]', color='tab:purple')
         ax1.tick_params(axis='y', labelcolor='tab:purple')
-
         # Second y-axis for scale variables
         ax2 = ax1.twinx()
         ax2.plot(mean_diffs_df.index, mean_diffs_df['dlambda'], color='tab:blue', label='dlambda')
@@ -765,11 +782,10 @@ for dx in dx_all:
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
         ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
-
-        #axes[1].set_title('Mean Differences of GPP components')
+        
         plt.tight_layout()
+        # plt.show()
 
-        # Save figure
         plt.savefig(f"{plots_folder}lin_pert_mean_diffs_{dx[1:]}-1km_{date}.pdf", dpi=300)
 
 
