@@ -13,7 +13,7 @@ import pandas as pd
 save_plot_maps = False
 save_plot2 = True
 print_output = True
-date = "2012-06-15" # "2012-06-28"
+date = "2012-07-27" # "2012-06-28"
 dx_all = ["_54km","_9km"] # 
 subfolder = ""  # "_pram_err" or "_cloudy" TODO _rainy
 plots_folder = f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/components{subfolder}_L2_"

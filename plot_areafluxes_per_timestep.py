@@ -88,8 +88,8 @@ interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 200
 # Set time
-dateime = "2012-07-27_08"
-subfolder = ""  # "" or "_cloudy" TODO _rainy
+dateime = "2012-07-27_05"
+subfolder = ""  # "" or "_cloudy"
 wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
 wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
 t_file_fra = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d02_2012_1km/VPRM_input_VEG_FRA_d02_2012.nc"
@@ -150,7 +150,7 @@ PAR0_of_PFT = {
     "GRA": 406.28,
     "OTH": 0.00,
 }
-SWDOWN_TO_PAR = 0.505
+SWDOWN_TO_PAR = 1
 
 # GPP_54km
 proj_GPP_54km = proj_on_finer_WRF_grid(
@@ -290,25 +290,30 @@ for idx, pft in enumerate(PAR0_of_PFT.keys()):
             (1 / (1 + (SWDOWN_1km * SWDOWN_TO_PAR) / PAR0)) * SWDOWN_1km * SWDOWN_TO_PAR
         ) * vegfrac
 mask_idx8_100 = veg_frac_map[7, :, :].values < 1.0
-
-dRAD_scale_test = (RAD_scale_1km_test - RAD_scale_1km) / RAD_scale_1km_test * 100
-
 dRAD_scale = (proj_RAD_scale_54km - RAD_scale_1km) / proj_RAD_scale_54km * 100
-
-SWDOWN_1km[proj_landmask_54km * stdh_mask == 0] = np.nan
-proj_SWDOWN_54km[proj_landmask_54km * stdh_mask == 0] = np.nan
-dSWDOWN[proj_landmask_54km * stdh_mask == 0] = np.nan
 RAD_scale_1km[proj_landmask_54km * stdh_mask * mask_idx8_100 == 0] = np.nan
-proj_RAD_scale_54km[proj_landmask_54km * stdh_mask == 0] = np.nan
-dRAD_scale[proj_landmask_54km * stdh_mask == 0] = np.nan
+# # --- Apply masks to all vars ---
+all_fields = [
+    SWDOWN_1km,
+    proj_SWDOWN_54km,
+    dSWDOWN,
+    proj_RAD_scale_54km,
+    dRAD_scale,
+    dGPPdT_1km,
+    GPP_1km,
+    proj_GPP_54km,
+    dGPP_real,
+    dRECO_model,
+]
+for arr in all_fields:
+    arr[proj_landmask_54km * stdh_mask == 0] = np.nan
 # mask out fluxes where T is below 5°C
 stdh_mask[T2_1km < 5] = False
-dT_calc[proj_landmask_54km * stdh_mask == 0] = np.nan
-dT_model[proj_landmask_54km * stdh_mask == 0] = np.nan
-dGPP_calc[proj_landmask_54km * stdh_mask == 0] = np.nan
-dGPP_model[proj_landmask_54km * stdh_mask == 0] = np.nan
-dGPPdT_real[proj_landmask_54km * stdh_mask == 0] = np.nan
-T2_1km[proj_landmask_54km * stdh_mask == 0] = np.nan
+all_fields = [dT_calc, dT_model, dGPP_calc, dGPP_model, dGPPdT_real, T2_1km]
+for arr in all_fields:
+    arr[proj_landmask_54km * stdh_mask == 0] = np.nan
+
+
 CLDFRC_1km_max = np.nanmax(CLDFRC_1km, axis=0)
 CLDFRC_54km_max = np.nanmax(proj_CLDFRC_54km, axis=0)
 
@@ -363,7 +368,7 @@ styled_imshow_plot(
     np.nanmin(RAD_scale_54km),
     np.nanmax(RAD_scale_54km),
     "YlOrRd",
-    r"RAD$_{scale}$ [W/m$^2$]",
+    r"RAD [W/m$^2$]",
     "RAD_scale_54km",
 )
 styled_imshow_plot(
@@ -371,7 +376,7 @@ styled_imshow_plot(
     np.nanmin(RAD_scale_1km),
     np.nanmax(RAD_scale_1km),
     "YlOrRd",
-    r"RAD$_{scale}$ [W/m$^2$]",
+    r"RAD [W/m$^2$]",
     "RAD_scale_1km",
 )
 
@@ -380,7 +385,7 @@ styled_imshow_plot(
     np.nanmin(dRAD_scale),
     np.nanmax(dRAD_scale),
     "RdBu",
-    r"$\Delta \text{RAD}_{scale}$ [%]",
+    r"$\Delta \text{RAD}$ [%]",
     "RAD_scale_54-1km",
 )
 
@@ -462,3 +467,4 @@ styled_imshow_plot(
 
 # RECO difference
 styled_imshow_plot(dRECO_model, -15, 15, "PiYG", "ΔRECO [μmol/m²/s]", "dRECO_model")
+print("Plots done.")

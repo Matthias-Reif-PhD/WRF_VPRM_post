@@ -13,8 +13,8 @@ from sklearn.preprocessing import StandardScaler
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 start_date = "2012-01-01 00:00:00"
-end_date = "2012-12-30 00:00:00"
-ref_tag = ""
+end_date = "2012-12-31 00:00:00"
+ref_tag = "_1km"
 STD_TOPO = 200
 resolutions = ["54km", "9km"]
 variable_groups = {
@@ -22,7 +22,7 @@ variable_groups = {
     "dGPP": "ΔGPP [gC/m²/day]",
     "dRECO": "ΔRECO [gC/m²/day]",
 }
-###############################4
+###############################42
 
 input_file = os.path.join(
     csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv"

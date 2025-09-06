@@ -46,7 +46,7 @@ def plot_timeseries_by_resolution(
 
         y = df[series_col].dropna()
 
-        label_opt = series_col if res == "CAMS" else f"{series_col} (OPT)"
+        label_opt = series_col if res == "CAMS" else f"{series_col} (ALPS)"
         grouped = y.groupby(y.index.date)
         valid_days = [
             (date, group) for date, group in grouped if not group.dropna().eq(0).all()
@@ -123,7 +123,7 @@ def plot_hourly_averages(
         series = hourly_avg[f"{column}_{res}"].dropna()
         # TODO: calculate the mean values of the series and store the in a df and return it main function
         # series_mean = series.mean() * convert_to_gC
-        label_opt = f"{column}_{res}" if res == "CAMS" else f"{column}_{res} (OPT)"
+        label_opt = f"{column}_{res}" if res == "CAMS" else f"{column}_{res} (ALPS)"
         plt.plot(
             series.index,
             series,
@@ -179,7 +179,7 @@ def plot_hourly_differences(
         plt.plot(
             diff_opt.index,
             diff_opt,
-            label=f"{column} {res}-1km (OPT)",
+            label=f"{column} {res}-1km (ALPS)",
             linestyle="-",
             color=resolution_colors[res],
         )
@@ -231,7 +231,7 @@ def compute_hourly_means_and_differences_reshaped(
                 records_means.append(
                     {
                         "variable": col,
-                        "type": "OPT",
+                        "type": "ALPS",
                         "resolution": res,
                         "mean": mean_opt,
                     }
@@ -244,7 +244,7 @@ def compute_hourly_means_and_differences_reshaped(
                     records_diffs.append(
                         {
                             "variable": col,
-                            "type": "OPT_DIFF",
+                            "type": "ALPS_DIFF",
                             "resolution": f"{res}-{baseline}",
                             "mean": diff_opt,
                         }
@@ -286,9 +286,9 @@ def compute_hourly_means_and_differences_reshaped(
     for col in df_diffs.columns:
         diff_type, diff_res = col
 
-        if diff_type == "OPT_DIFF":
+        if diff_type == "ALPS_DIFF":
             base_res = diff_res.split("-")[0]
-            ref_col = ("OPT", base_res)
+            ref_col = ("ALPS", base_res)
         elif diff_type == "REF_DIFF":
             base_res = diff_res.split("-")[0]
             ref_col = ("REF", base_res)
@@ -305,7 +305,7 @@ def compute_hourly_means_and_differences_reshaped(
 def main():
     csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
     outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
-    start_date, end_date = "2012-01-01 00:00:00", "2012-12-30 00:00:00"
+    start_date, end_date = "2012-01-01 00:00:00", "2012-12-31 00:00:00"
     # start_date = "2012-06-01 00:00:00"  # TODO: run for each season jan/Feb/Mar - April...
     # end_date = "2012-06-20 00:00:00"
     STD_TOPO = 200
