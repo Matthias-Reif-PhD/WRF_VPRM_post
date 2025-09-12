@@ -28,7 +28,6 @@ def plot_timeseries_by_resolution(
     resolutions: list,
     outfolder: str,
     ref_sim: bool,
-    convert_to_gC: float,
     resolution_colors: dict,
     STD_TOPO: int,
     start_date: str,
@@ -91,11 +90,11 @@ def plot_timeseries_by_resolution(
                 plt.plot([], [], label=label_ref, linestyle="--", color=color)
 
     plt.xticks(xticks, xticklabels, ha="left")
-    plt.xlabel("Date", fontsize=14)
-    plt.ylabel(f"{column} {unit}", fontsize=14)
-    plt.tick_params(labelsize=12, labelrotation=45)
+    plt.xlabel("Date", fontsize=20)
+    plt.ylabel(f"{column} {unit}", fontsize=20)
+    plt.tick_params(labelsize=20, labelrotation=45)
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend(fontsize=10)
+    plt.legend(fontsize=16)
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
@@ -112,7 +111,6 @@ def plot_hourly_averages(
     resolutions: list,
     outfolder: str,
     ref_sim: bool,
-    convert_to_gC: float,
     resolution_colors: dict,
     STD_TOPO: int,
     start_date: str,
@@ -121,8 +119,6 @@ def plot_hourly_averages(
     plt.figure(figsize=(10, 6))
     for res in resolutions:
         series = hourly_avg[f"{column}_{res}"].dropna()
-        # TODO: calculate the mean values of the series and store the in a df and return it main function
-        # series_mean = series.mean() * convert_to_gC
         label_opt = f"{column}_{res}" if res == "CAMS" else f"{column}_{res} (ALPS)"
         plt.plot(
             series.index,
@@ -143,11 +139,13 @@ def plot_hourly_averages(
                     color=resolution_colors[res],
                 )
 
-    plt.xlabel("Hour", fontsize=14)
-    plt.ylabel(f"{column} {unit}", fontsize=14)
+    plt.xlabel("UTC [h]", fontsize=24)
+    plt.ylabel(f"{column} {unit}", fontsize=24)
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.xticks([0, 6, 12, 18, 24])
-    plt.legend(fontsize=10)
+    plt.tick_params(axis="x", labelsize=24)
+    plt.tick_params(axis="y", labelsize=24)
+    plt.legend(fontsize=16)
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_hourly_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
@@ -164,7 +162,6 @@ def plot_hourly_differences(
     resolutions_diff: list,
     outfolder: str,
     ref_sim: bool,
-    convert_to_gC: float,
     resolution_colors: dict,
     STD_TOPO: int,
     start_date: str,
@@ -196,11 +193,13 @@ def plot_hourly_differences(
                 color=resolution_colors[res],
             )
 
-    plt.xlabel("Hour", fontsize=14)
-    plt.ylabel(f"{column} {unit}", fontsize=14)
+    plt.xlabel("UTC [h]", fontsize=24)
+    plt.ylabel(r"$\Delta$" + f"{column} {unit}", fontsize=24)
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend(fontsize=10)
+    plt.legend(fontsize=16)
     plt.xticks([0, 6, 12, 18, 24])
+    plt.tick_params(axis="x", labelsize=24)
+    plt.tick_params(axis="y", labelsize=24)
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
@@ -215,7 +214,6 @@ def compute_hourly_means_and_differences_reshaped(
     columns: list,
     resolutions: list,
     ref_sim: bool,
-    convert_to_gC: float,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     records_means = []
     records_diffs = []
@@ -227,7 +225,7 @@ def compute_hourly_means_and_differences_reshaped(
             base_key = f"{col}_{baseline}"
 
             if key in hourly_avg.columns:
-                mean_opt = hourly_avg[key].mean() * convert_to_gC
+                mean_opt = hourly_avg[key].mean()
                 records_means.append(
                     {
                         "variable": col,
@@ -238,9 +236,7 @@ def compute_hourly_means_and_differences_reshaped(
                 )
 
                 if res != baseline and base_key in hourly_avg.columns:
-                    diff_opt = (
-                        hourly_avg[key] - hourly_avg[base_key]
-                    ).mean() * convert_to_gC
+                    diff_opt = (hourly_avg[key] - hourly_avg[base_key]).mean()
                     records_diffs.append(
                         {
                             "variable": col,
@@ -251,7 +247,7 @@ def compute_hourly_means_and_differences_reshaped(
                     )
 
             if ref_sim and res != "CAMS" and key in hourly_avg_ref.columns:
-                mean_ref = hourly_avg_ref[key].mean() * convert_to_gC
+                mean_ref = hourly_avg_ref[key].mean()
                 records_means.append(
                     {
                         "variable": col,
@@ -262,9 +258,7 @@ def compute_hourly_means_and_differences_reshaped(
                 )
 
                 if res != baseline and base_key in hourly_avg_ref.columns:
-                    diff_ref = (
-                        hourly_avg_ref[key] - hourly_avg_ref[base_key]
-                    ).mean() * convert_to_gC
+                    diff_ref = (hourly_avg_ref[key] - hourly_avg_ref[base_key]).mean()
                     records_diffs.append(
                         {
                             "variable": col,
@@ -310,7 +304,7 @@ def main():
     # end_date = "2012-06-20 00:00:00"
     STD_TOPO = 200
     ref_sim = True
-    convert_to_gC = 60 * 60 * 24 * 1e-6 * 12
+    # convert_to_gC = 60 * 60 * 24 * 1e-6 * 12
 
     columns = ["GPP", "RECO", "NEE", "T2", "SWDOWN"]
     units = [" [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [µmol m² s⁻¹]", " [°C]", " [W/m²]"]
@@ -334,7 +328,7 @@ def main():
     hourly_avg_ref = group_hourly_average(merged_df_gt_ref) if ref_sim else None
 
     df_means, df_diffs, df_pct = compute_hourly_means_and_differences_reshaped(
-        hourly_avg, hourly_avg_ref, columns, resolutions, ref_sim, convert_to_gC
+        hourly_avg, hourly_avg_ref, columns, resolutions, ref_sim
     )
 
     df_means.to_csv(f"{outfolder}hourly_means_summary.csv")
@@ -359,7 +353,6 @@ def main():
             resolutions,
             outfolder,
             ref_sim,
-            convert_to_gC,
             resolution_colors,
             STD_TOPO,
             start_date,
@@ -373,7 +366,6 @@ def main():
             resolutions,
             outfolder,
             ref_sim,
-            convert_to_gC,
             resolution_colors,
             STD_TOPO,
             start_date,
@@ -387,7 +379,6 @@ def main():
             resolutions_diff,
             outfolder,
             ref_sim,
-            convert_to_gC,
             resolution_colors,
             STD_TOPO,
             start_date,

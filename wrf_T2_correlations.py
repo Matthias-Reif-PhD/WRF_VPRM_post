@@ -584,8 +584,13 @@ for coarse_domain in coarse_domains:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
                 ax.set_ylim(-3, 3)
                 ax.set_xlim(T_ref_min, T_ref_max)
-                ax.set_xlabel(r"$T_{\mathrm{ref}}$ °C")
-                ax.set_ylabel("[μmol CO2 m² s⁻¹ °C⁻¹]")
+                ax.set_xlabel(r"$T_{\mathrm{ref}}$ °C", fontsize=20)
+                ax.set_ylabel("[μmol m² s⁻¹ °C⁻¹]", fontsize=20)
+                
+                ax.tick_params(labelsize=20)
+                ax.grid(True, linestyle="--", alpha=0.5)
+                ax.legend(fontsize=16)
+
                 # ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")
                 figname = (
                     outfolder

@@ -177,5 +177,5 @@ for name, lat, lon, typ in zip(site_names, site_lat, site_lon, site_types):
 
 # plt.title("Overlay Domains with Sites", fontsize=16)
 plt.tight_layout()
-# plt.show()
+plt.show()
 plt.savefig(f"{outfolder}/domains_topo_sites.pdf", bbox_inches="tight")

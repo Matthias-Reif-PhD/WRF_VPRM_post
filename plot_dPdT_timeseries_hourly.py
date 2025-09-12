@@ -6,8 +6,6 @@ import numpy as np
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import statsmodels.api as sm
-from sklearn.preprocessing import StandardScaler
 
 ########### Settings ###########
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
@@ -19,8 +17,8 @@ STD_TOPO = 200
 resolutions = ["54km", "9km"]
 variable_groups = {
     "dT": "ΔT [°C]",
-    "dGPP": "ΔGPP [gC/m²/day]",
-    "dRECO": "ΔRECO [gC/m²/day]",
+    "dGPP": "ΔGPP [μmol/m²/s]",
+    "dRECO": "ΔRECO [μmol/m²/s]",
 }
 ###############################42
 
@@ -221,77 +219,6 @@ def plot_gpp_percent_explained(
         plt.close()
 
 
-def commonality_analysis_plot(
-    df, df_ref, variable_groups, resolutions, outfolder, start_date, end_date
-):
-    for var_prefix, ylabel in variable_groups.items():
-        plt.figure(figsize=(10, 6))
-        width = 0.35
-        bar_positions = np.arange(len(resolutions))
-        offset = width / 2
-
-        resolution_colors = {
-            "54km": "red",
-            "9km": "blue",
-        }
-
-        for i, res in enumerate(resolutions):
-            for j, (dataset, label, alpha) in enumerate(
-                zip([df, df_ref], ["OPT", "REF"], [0.7, 0.4])
-            ):
-                col_real = f"{var_prefix}_real_mean_{res}"
-                col_model = f"{var_prefix}_model_mean_{res}"
-
-                if col_real not in dataset.columns or col_model not in dataset.columns:
-                    print(f"Missing columns for {label} {res}. Skipping...")
-                    continue
-
-                Y = dataset[col_real].dropna()
-                X = dataset[[col_model]].dropna()
-
-                idx = Y.index.intersection(X.index)
-                Y = Y.loc[idx]
-                X = X.loc[idx]
-
-                scaler = StandardScaler()
-                X_std = scaler.fit_transform(X)
-                Y_std = (Y - Y.mean()) / Y.std()
-
-                model = sm.OLS(Y_std, sm.add_constant(X_std)).fit()
-                R2 = model.rsquared
-
-                pos = i + (-offset if label == "OPT" else offset)
-
-                plt.bar(
-                    pos,
-                    R2,
-                    width=width,
-                    color=resolution_colors[res],
-                    alpha=alpha,
-                    label=(
-                        f"{res} {label}"
-                        if f"{res} {label}"
-                        not in plt.gca().get_legend_handles_labels()[1]
-                        else None
-                    ),
-                )
-
-        plt.xticks(bar_positions, [f"{res}" for res in resolutions])
-        plt.ylabel(f"R² of {ylabel} Model to {ylabel} Real")
-        plt.title(f"Commonality Analysis for {ylabel}")
-        plt.grid(True, axis="y")
-        plt.legend()
-        plt.tight_layout()
-
-        plotname = os.path.join(
-            outfolder,
-            f"{var_prefix}_relative_contribution_commonality_with_ref_{start_date}_{end_date}.pdf",
-        )
-        print(f"saved relative contribution plot: {plotname}")
-        plt.savefig(plotname, bbox_inches="tight")
-        plt.close()
-
-
 plot_combined(df, df_ref, variable_groups)
 variable_subset = {
     "dGPP": "ΔGPP ",
@@ -299,8 +226,4 @@ variable_subset = {
 }
 plot_gpp_percent_explained(
     df, df_ref, variable_subset, resolutions, outfolder, STD_TOPO, start_date, end_date
-)
-
-commonality_analysis_plot(
-    df, df_ref, variable_subset, resolutions, outfolder, start_date, end_date
 )

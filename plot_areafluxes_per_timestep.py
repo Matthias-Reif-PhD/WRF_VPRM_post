@@ -7,6 +7,22 @@ import cartopy.feature as cfeature
 from scipy.ndimage import binary_erosion, distance_transform_edt
 import xarray as xr
 
+############# INPUT ############
+plots_folder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/areafluxes_"
+save_plot = True
+dx = "_54km"
+interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
+temp_gradient = -6.5  # K/km
+STD_TOPO = 200
+# Set time
+dateime = "2012-07-27_12"
+subfolder = ""  # "" or "_cloudy"
+wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
+wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
+t_file_fra = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d02_2012_1km/VPRM_input_VEG_FRA_d02_2012.nc"
+t_file_fra_d01 = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d01_2012_54km/VPRM_input_VEG_FRA_d01_2012.nc"
+################################
+
 
 def generate_coastal_mask(
     veg_type: np.ndarray, buffer_km: float = 50.0, grid_spacing_km: float = 3.0
@@ -79,22 +95,6 @@ def proj_on_finer_WRF_grid_3D(
 
     return proj_var
 
-
-############# INPUT ############
-plots_folder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/areafluxes_"
-save_plot = True
-dx = "_54km"
-interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
-temp_gradient = -6.5  # K/km
-STD_TOPO = 200
-# Set time
-dateime = "2012-07-27_05"
-subfolder = ""  # "" or "_cloudy"
-wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
-wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
-t_file_fra = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d02_2012_1km/VPRM_input_VEG_FRA_d02_2012.nc"
-t_file_fra_d01 = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d01_2012_54km/VPRM_input_VEG_FRA_d01_2012.nc"
-################################
 
 # Load the NetCDF file
 nc_fid1km = nc.Dataset(wrfinput_path_1km, "r")
@@ -364,13 +364,46 @@ def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
 
 
 styled_imshow_plot(
+    dGPP_calc, -15, 15, "PiYG", r"$\Delta$GPP$_{calc}$ [μmol/m²/s]", "dGPP_model_02"
+)
+
+styled_imshow_plot(
+    dRAD_scale,
+    np.nanmin(-200),
+    np.nanmax(200),
+    "RdBu",
+    r"$\Delta \text{RAD}$ [W/m$^2$]",
+    "RAD_scale_54-1km",
+)
+styled_imshow_plot(
+    proj_SWDOWN_54km,
+    np.nanmin(SWDOWN_1km),
+    np.nanmax(SWDOWN_1km),
+    "YlOrRd",
+    "SWDOWN [W/m²]",
+    "SWDOWN_54km",
+)
+styled_imshow_plot(
     proj_RAD_scale_54km,
-    np.nanmin(RAD_scale_54km),
-    np.nanmax(RAD_scale_54km),
+    np.nanmin(RAD_scale_1km),
+    np.nanmax(RAD_scale_1km),
     "YlOrRd",
     r"RAD [W/m$^2$]",
     "RAD_scale_54km",
 )
+# GPP calc again (duplicated in earlier batch, but now renamed to not overwrite)
+
+
+# dGPP/dT sensitivity
+styled_imshow_plot(
+    dGPPdT_1km * conv_factor,
+    -2,
+    2,
+    "PiYG",
+    r"$\frac{\partial GPP}{\partial T}$ ([μmol/m²/s/°C]",
+    "dGPPdT_1km",
+)
+
 styled_imshow_plot(
     RAD_scale_1km,
     np.nanmin(RAD_scale_1km),
@@ -380,23 +413,7 @@ styled_imshow_plot(
     "RAD_scale_1km",
 )
 
-styled_imshow_plot(
-    dRAD_scale,
-    np.nanmin(dRAD_scale),
-    np.nanmax(dRAD_scale),
-    "RdBu",
-    r"$\Delta \text{RAD}$ [%]",
-    "RAD_scale_54-1km",
-)
 
-styled_imshow_plot(
-    proj_SWDOWN_54km,
-    np.nanmin(proj_SWDOWN_54km),
-    np.nanmax(proj_SWDOWN_54km),
-    "YlOrRd",
-    "SWDOWN [W/m²]",
-    "SWDOWN_54km",
-)
 styled_imshow_plot(
     SWDOWN_1km,
     np.nanmin(SWDOWN_1km),
@@ -437,13 +454,7 @@ styled_imshow_plot(
 # GPP model diff (54km - 1km)
 styled_imshow_plot(dGPP_real, -15, 15, "PiYG", "ΔGPP [μmol/m²/s]", "GPP_54-1km")
 
-# GPP calc again (duplicated in earlier batch, but now renamed to not overwrite)
-styled_imshow_plot(dGPP_calc, -15, 15, "PiYG", "ΔGPP [μmol/m²/s]", "dGPP_model_02")
 
-# dGPP/dT sensitivity
-styled_imshow_plot(
-    dGPPdT_1km * conv_factor, -2, 2, "PiYG", "dGPP/dT ([μmol/m²/s/°C]", "dGPPdT_1km"
-)
 styled_imshow_plot(
     proj_dGPPdT_54km * conv_factor,
     -2,
