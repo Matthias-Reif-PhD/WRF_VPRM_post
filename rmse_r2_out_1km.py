@@ -3,8 +3,10 @@ import re
 import matplotlib.pyplot as plt
 
 # === INPUT FILE ===
-csv_file = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/Validation_FLUXNET_hourly_all_2012-01-01 00:00:00_2012-12-31 00:00:00.csv"  # <- put your CSV filename here
-output_file = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/latex_tables.txt"
+timespan = "2012-01-01 00:00:00_2012-12-31 00:00:00"
+sim_type = ""  # "", "_parm_err" or "_cloudy"
+csv_file = f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/Validation_FLUXNET_hourly_all{sim_type}_{timespan}.csv"  # <- put your CSV filename here
+output_file = f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/latex_table_{sim_type}_{timespan}.txt"
 
 # === Load CSV ===
 df = pd.read_csv(csv_file)
@@ -125,6 +127,7 @@ ax[1].legend()
 
 plt.tight_layout()
 plt.savefig(
-    "/home/c707/c7071034/Github/WRF_VPRM_post/plots/site_comparison_1km.pdf", dpi=300
+    f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/site_comparison_1km{sim_type}.pdf",
+    dpi=300,
 )
 plt.show()

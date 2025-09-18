@@ -39,6 +39,70 @@ def haversine_dist(lat1, lon1, lat2, lon2):
     return R * c
 
 
+def find_best_fluxnet_match(
+    lat_target,
+    lon_target,
+    lats,
+    lons,
+    location_pft,
+    veg_frac_map,
+    hgt,
+    hgt_site,
+    radius,
+    slope=None,
+    aspect=None,
+):
+    if slope is None or aspect is None:
+        slope, aspect = compute_slope_aspect(hgt, lats, lons)
+
+    # Site reference
+    flat_idx = np.abs(lats - lat_target) + np.abs(lons - lon_target)
+    lat_idx, lon_idx = np.unravel_index(np.argmin(flat_idx), lats.shape)
+    target_slope = slope[lat_idx, lon_idx]
+    target_aspect = aspect[lat_idx, lon_idx]
+
+    # Distance constraint
+    dist_km = haversine_dist(lat_target, lon_target, lats, lons)
+    dist_mask = dist_km <= abs(radius)
+
+    # Terrain differences
+    height_diff = np.abs(hgt - hgt_site)
+    slope_diff = np.abs(slope - target_slope)
+    aspect_diff = np.abs((aspect - target_aspect + 180) % 360 - 180)
+
+    # Vegetation fraction (axis 1 = PFT)
+    veg_frac = veg_frac_map[0, location_pft - 1, :, :]  # shape (ny, nx)
+
+    # Define weighted cost function
+    cost = (
+        0.5 * (height_diff / np.nanmax(height_diff))
+        + 0.1 * (slope_diff / 90.0)
+        + 0.1 * (aspect_diff / 180.0)
+        + 0.6 * (1.0 - veg_frac) ** 2
+    )
+
+    # Apply radius mask
+    cost = np.where(dist_mask, cost, np.inf)
+
+    if not np.any(np.isfinite(cost)):
+        raise ValueError("No valid grid cell within radius.")
+
+    min_idx = np.unravel_index(np.argmin(cost), cost.shape)
+    min_dist = dist_km[min_idx]
+
+    return (
+        min_dist,
+        min_idx,
+        target_slope,
+        slope_diff[min_idx],
+        target_aspect,
+        aspect_diff[min_idx],
+        veg_frac[min_idx],
+        height_diff[min_idx],
+        cost[min_idx],
+    )
+
+
 def find_nearest_grid_hgt_sa(
     lat_target, lon_target, lats, lons, location_pft, IVGTYP_vprm, hgt, hgt_site, radius
 ):
@@ -92,7 +156,7 @@ def extract_datetime_from_filename(filename):
     return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
 
-def extract_timeseries(wrf_path, start_date, end_date):
+def extract_timeseries(wrf_path, start_date, end_date, res, sim_type):
 
     run_Pmodel = False
     subday = ""
@@ -101,11 +165,22 @@ def extract_timeseries(wrf_path, start_date, end_date):
         migli_path = "/scratch/c7071034/DATA/RECO_Migli"
         subday = "subdailyC3_"
 
-    wrf_path_dx_str = wrf_path.split("_")[-1]
+    radius = 30
     output_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
     d0X = "wrfout_d01"
-    if wrf_path_dx_str == "1km":
+    if res == "1km":
         d0X = "wrfout_d02"
+        vprm_input_path_1km = f"/scratch/c7071034/DATA/VPRM_input/vprm_corine_1km/vprm_input_d02_2012-06-23_00:00:00.nc"
+        ds = xr.open_dataset(vprm_input_path_1km)
+        # ['Times', 'XLONG', 'XLAT', 'EVI_MIN', 'EVI_MAX', 'EVI', 'LSWI_MIN', 'LSWI_MAX', 'LSWI', 'VEGFRA_VPRM']
+        veg_frac_map = ds["VEGFRA_VPRM"].values
+        veg_frac_map = np.nan_to_num(veg_frac_map, nan=0.0)
+    else:
+        vprm_input_path = f"/scratch/c7071034/DATA/VPRM_input/vprm_corine_{res}/vprm_input_d01_2012-06-23_00:00:00.nc"
+        ds = xr.open_dataset(vprm_input_path)
+        # ['Times', 'XLONG', 'XLAT', 'EVI_MIN', 'EVI_MAX', 'EVI', 'LSWI_MIN', 'LSWI_MAX', 'LSWI', 'VEGFRA_VPRM']
+        veg_frac_map = ds["VEGFRA_VPRM"].values
+        veg_frac_map = np.nan_to_num(veg_frac_map, nan=0.0)
 
     # Convert to datetime (but ignore time part for full-day selection)
     start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S").date()
@@ -133,7 +208,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
     locations = [
         {
             "name": "CH-Dav_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 46.8153,
             "lon": 9.8559,
             "pft": 1,  # "ENF",
@@ -141,7 +216,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Lav_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 45.9562,
             "lon": 11.2813,
             "pft": 1,  # "ENF",
@@ -149,7 +224,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Ren_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 46.5869,
             "lon": 11.4337,
             "pft": 1,  # "ENF",
@@ -157,7 +232,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "AT-Neu_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 47.1167,
             "lon": 11.3175,
             "pft": 7,  # "GRA",
@@ -165,7 +240,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-MBo_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 46.0147,
             "lon": 11.0458,
             "pft": 7,  # "GRA",
@@ -173,7 +248,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Dav_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 46.8153,
             "lon": 9.8559,
             "pft": 1,  # "ENF",
@@ -181,7 +256,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Lav_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 45.9562,
             "lon": 11.2813,
             "pft": 1,  # "ENF",
@@ -189,7 +264,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Ren_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 46.5869,
             "lon": 11.4337,
             "pft": 1,  # "ENF",
@@ -197,7 +272,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "AT-Neu_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 47.1167,
             "lon": 11.3175,
             "pft": 7,  # "GRA",
@@ -205,7 +280,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-MBo_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 46.0147,
             "lon": 11.0458,
             "pft": 7,  # "GRA",
@@ -256,7 +331,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
     locations_d01 = [
         {
             "name": "CH-Cha_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 47.2102,
             "lon": 8.4104,
             "pft": 7,  # GRA
@@ -264,7 +339,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Cha_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 47.2102,
             "lon": 8.4104,
             "pft": 7,
@@ -272,7 +347,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Fru_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 47.1158,
             "lon": 8.5378,
             "pft": 7,  # GRA
@@ -280,7 +355,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Fru_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 47.1158,
             "lon": 8.5378,
             "pft": 7,
@@ -288,7 +363,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Oe1_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 47.2858,
             "lon": 7.7319,
             "pft": 7,  # GRA
@@ -296,7 +371,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Oe1_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 47.2858,
             "lon": 7.7319,
             "pft": 7,
@@ -304,7 +379,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "DE-Lkb_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 49.0996,
             "lon": 13.3047,
             "pft": 1,  # ENF
@@ -312,7 +387,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "DE-Lkb_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 49.0996,
             "lon": 13.3047,
             "pft": 1,
@@ -320,7 +395,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Isp_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 45.8126,
             "lon": 8.6336,
             "pft": 4,  # DBF
@@ -328,7 +403,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Isp_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 45.8126,
             "lon": 8.6336,
             "pft": 4,
@@ -336,7 +411,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-La2_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 45.9542,
             "lon": 11.2853,
             "pft": 1,  # ENF
@@ -344,7 +419,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-La2_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 45.9542,
             "lon": 11.2853,
             "pft": 1,
@@ -352,7 +427,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-PT1_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 45.2009,
             "lon": 9.061,
             "pft": 4,  # DBF
@@ -360,7 +435,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-PT1_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 45.2009,
             "lon": 9.061,
             "pft": 4,
@@ -368,7 +443,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Oe2_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 47.2863,
             "lon": 7.7343,
             "pft": 6,  # "CRO",
@@ -376,7 +451,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Oe2_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 47.2863,
             "lon": 7.7343,
             "pft": 6,  # "CRO",
@@ -392,7 +467,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Tor_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 45.8444,
             "lon": 7.5781,
             "pft": 7,  # "GRA",
@@ -400,7 +475,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "IT-Tor_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 45.8444,
             "lon": 7.5781,
             "pft": 7,  # "GRA",
@@ -416,7 +491,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Lae_REF",
-            "CO2_ID": "",
+            "CO2_ID": "_REF",
             "lat": 47.4781,
             "lon": 8.3644,
             "pft": 3,  # "MF",
@@ -424,7 +499,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         },
         {
             "name": "CH-Lae_ALPS",
-            "CO2_ID": "_REF",
+            "CO2_ID": "",
             "lat": 47.4781,
             "lon": 8.3644,
             "pft": 3,  # "MF",
@@ -439,7 +514,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
             "hgt_site": 689,
         },
     ]
-    if wrf_path_dx_str != "1km":
+    if res != "1km":
         locations = locations_d01 + locations
 
     # Define the remapping dictionary for CORINE vegetation types
@@ -512,7 +587,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
         nc_fid1 = nc.Dataset(nc_f1, "r")
         wrf_file = nc_f1.split("/")[-1]
         date_time = wrf_file.split("_")[2] + "_" + wrf_file.split("_")[3]
-        file_end = wrf_path_dx_str + "_" + date_time
+        file_end = res + "_" + date_time
         print(f"Processing {file_end}")
         xlat = nc_fid1.variables["XLAT"][0]  # Assuming the first time slice
         xlon = nc_fid1.variables["XLONG"][0]
@@ -523,7 +598,6 @@ def extract_timeseries(wrf_path, start_date, end_date):
             IVGTYP[:, :]
         )  # Create a new array for the simplified vegetation categories
         # dx = (xlat[1, 0] - xlat[0, 0]) * 111
-        radius = 20
 
         if run_Pmodel:
             # find file in migli_path which ends with date_time
@@ -558,24 +632,47 @@ def extract_timeseries(wrf_path, start_date, end_date):
             WRF_gee = nc_fid1.variables[f"EBIO_GEE{location['CO2_ID']}"][0, 0, :, :]
             WRF_res = nc_fid1.variables[f"EBIO_RES{location['CO2_ID']}"][0, 0, :, :]
 
-            # Get nearest neighbour of GEE, RES, and T2 for the current location and append to the row
-            #
-            dist_km, grid_idx, target_slope, target_aspect = find_nearest_grid_hgt_sa(
+            # TODO: just calculate once...
+            (
+                dist_km,
+                grid_idx,
+                target_slope,
+                target_slope_diff,
+                target_aspect,
+                target_aspect_diff,
+                veg_frac_idx,
+                height_diff_idx,
+                cost,
+            ) = find_best_fluxnet_match(
                 lat_target,
                 lon_target,
                 xlat,
                 xlon,
                 location["pft"],
-                IVGTYP_vprm,
+                veg_frac_map,
                 hgt,
                 location["hgt_site"],
                 radius,
+            )
+            print(
+                f"Cost: \n  [{location['name']}] "
+                f"Dist={dist_km:.2f} km | "
+                f"Height Diff={height_diff_idx:.2f} m"
+                f"Idx={grid_idx} | "
+                f"Slope={target_slope:.1f}° | "
+                f"Slope diff={target_slope_diff:.1f}° | "
+                f"Aspect={target_aspect:.1f}° | "
+                f"Aspect diff={target_aspect_diff:.1f}° | "
+                f"VegFrac={veg_frac_idx:.2f} | "
+                f"Cost={cost:.3f}"
             )
 
             # add dist to the large locations dict which contains all the locations
             for loc in locations:
                 if loc["name"] == location["name"]:
+
                     loc["dist"] = dist_km
+                    loc["veg_frac_idx"] = veg_frac_idx
                     loc["hgt_wrf"] = hgt[grid_idx[0], grid_idx[1]]
                     loc["lat_wrf"] = xlat[grid_idx[0], grid_idx[1]]
                     loc["lon_wrf"] = xlon[grid_idx[0], grid_idx[1]]
@@ -612,7 +709,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
     # Set the time as the index of the DataFrame
     df_out.index = [extract_datetime_from_filename(f) for f in file_list]
     # Optionally, save the DataFrame to CSV
-    output_filename = f"wrf_FLUXNET_sites_{wrf_path.split('_')[-1]}_{start_date.split('_')[0]}_{end_date.split('_')[0]}.csv"
+    output_filename = f"wrf_FLUXNET_sites_{res}{sim_type}_{start_date.split('_')[0]}_{end_date.split('_')[0]}.csv"
 
     df_out.to_csv(
         os.path.join(
@@ -623,7 +720,7 @@ def extract_timeseries(wrf_path, start_date, end_date):
     # write another csv file with the distances but use only the _REF sites
     dist_rows = []
     for loc in locations:
-        if "ref" in loc["name"]:
+        if "ALPS" in loc["name"]:
             dist_rows.append(
                 {
                     "name": loc["name"],
@@ -632,15 +729,25 @@ def extract_timeseries(wrf_path, start_date, end_date):
                     "lat_wrf": loc["lat_wrf"],
                     "lon_wrf": loc["lon_wrf"],
                     "pft": loc["pft"],
+                    "veg_frac_idx": loc["veg_frac_idx"],
                 }
             )
     df_out_dist = pd.DataFrame(
-        dist_rows, columns=["name", "dist", "hgt_wrf", "lat_wrf", "lon_wrf", "pft"]
+        dist_rows,
+        columns=[
+            "name",
+            "dist",
+            "hgt_wrf",
+            "lat_wrf",
+            "lon_wrf",
+            "pft",
+            "veg_frac_idx",
+        ],
     )
     df_out_dist.to_csv(
         os.path.join(
             output_dir,
-            f"distances_{wrf_path.split('_')[-1]}_{start_date.split('_')[0]}_{end_date.split('_')[0]}.csv",
+            f"distances_{res}{sim_type}_{start_date.split('_')[0]}_{end_date.split('_')[0]}.csv",
         )
     )
 
@@ -655,22 +762,34 @@ def main():
             "-s", "--start", type=str, help="Format: 2012-07-01 01:00:00"
         )
         parser.add_argument("-e", "--end", type=str, help="Format: 2012-07-01 01:00:00")
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            help="Format: '', '_parm_err' or '_cloudy'",
+            default="",
+        )
         args = parser.parse_args()
         start_date = args.start
         end_date = args.end
+        sim_type = args.type
     else:  # to run locally
         start_date = "2012-01-01 00:00:00"
         end_date = "2012-12-31 00:00:00"
+        sim_type = "_pram_err"  # "", "_parm_err" or "_cloudy"
 
     wrf_paths = [
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
-        # "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
-        # "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
-        # "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
-        # "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
+        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
+        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
+        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
+        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
     ]
     for wrf_path in wrf_paths:
-        extract_timeseries(wrf_path, start_date, end_date)
+        res = wrf_path.split("_")[-1]
+        wrf_path = wrf_path + sim_type
+        print((wrf_path, start_date, end_date, res, sim_type))
+        extract_timeseries(wrf_path, start_date, end_date, res, sim_type)
 
 
 if __name__ == "__main__":

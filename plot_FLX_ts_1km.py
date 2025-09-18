@@ -108,6 +108,7 @@ def read_FLUXNET_site(start_date, end_date, location, base_dir, var_flx):
 
 # Path to the directory containing the CSV files
 timespan = "2012-01-01 00:00:00_2012-12-31 00:00:00"
+sim_type = "_all"  # "", "_cloudy" or  "_all"
 csv_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots"
 base_dir_FLX = "/scratch/c7071034/DATA/Fluxnet2015/Alps"
@@ -116,10 +117,16 @@ units = ["[°C]", "[μmol/m²/s]", "[μmol/m²/s]", "[μmol/m²/s]"]
 res_dx = "1km"
 plot_CAMS = True  # True -> need to load all CAMS files
 # List all relevant CSV files
-if res_dx == "1km":
-    csv_files = glob.glob(f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}*{timespan}.csv")
+# if res_dx == "1km":
+if sim_type == "_all":
+    csv_files = glob.glob(
+        f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}*_{timespan}.csv"
+    )  # be carefull, chack that there is no other data
 else:
-    csv_files = glob.glob(f"{csv_dir}/wrf_FLUXNET_sites_*{timespan}.csv")
+    csv_files = glob.glob(
+        f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}{sim_type}_{timespan}.csv"
+    )
+
 csv_files_sorted = sorted(
     csv_files,
     key=lambda x: int(
@@ -132,7 +139,7 @@ csv_files_sorted = sorted(
 dataframes = {}
 # Read each CSV into a DataFrame and store in the dictionary
 for csv_file in csv_files_sorted:
-    resolution = csv_file.split("_")[-3]  # Extract resolution from filename
+    resolution = res_dx  # Extract resolution from filename
     df = pd.read_csv(csv_file, index_col=0, parse_dates=True)
     dataframes[resolution] = df
 
@@ -202,21 +209,36 @@ resolution_colors = {
     "27km": "red",
     "54km": "green",
 }
-
-
-# read from pft_site_match_at_3km.csv
-pft_site_match = pd.read_csv(
-    f"/home/c707/c7071034/Github/WRF_VPRM_post/pft_site_match_at_{res_dx}.csv"
-)
+# read from
+if sim_type == "_all":
+    pft_site_match = pd.read_csv(f"{csv_dir}/distances_{res_dx}_{timespan}.csv")
+else:
+    pft_site_match = pd.read_csv(
+        f"{csv_dir}/distances_{res_dx}{sim_type}_{timespan}.csv"
+    )
 model_lat_lon = []
 for i in range(len(locations)):
     model_lat_lon.append(
         {
-            "name": pft_site_match["site"][i],
-            "lat": pft_site_match["model_lat"][i],
-            "lon": pft_site_match["model_lon"][i],
+            "name": pft_site_match["name"][i],
+            "lat": pft_site_match["lat_wrf"][i],
+            "lon": pft_site_match["lon_wrf"][i],
+            "veg_frac": pft_site_match["veg_frac_idx"][i],
         }
     )
+# read from pft_site_match_at_3km.csv
+# pft_site_match = pd.read_csv(
+#     f"/home/c707/c7071034/Github/WRF_VPRM_post/pft_site_match_at_{res_dx}.csv"
+# )
+# model_lat_lon = []
+# for i in range(len(locations)):
+#     model_lat_lon.append(
+#         {
+#             "name": pft_site_match["site"][i],
+#             "lat": pft_site_match["model_lat"][i],
+#             "lon": pft_site_match["model_lon"][i],
+#         }
+#     )
 # model_lat_lon
 # load CAMS data
 CAMS_data_dir_path = "/scratch/c7071034/DATA/CAMS/"
@@ -559,10 +581,17 @@ for location in locations:
         plt.xticks([0, 6, 12, 18, 24])
         plt.grid()
         plt.tight_layout()
-        plt.savefig(
-            f"{outfolder}/{location}_{fluxtype}_comparison_hourly_{resolution}_{timespan}.pdf",
-            bbox_inches="tight",
-        )  # Save plot as PNG
+        if sim_type == "":
+            sim_type = "_clear_sky"
+            plt.savefig(
+                f"{outfolder}/{location}_{fluxtype}_comparison_hourly_{resolution}{sim_type}_{timespan}.pdf",
+                bbox_inches="tight",
+            )  # Save plot as PNG
+        else:
+            plt.savefig(
+                f"{outfolder}/{location}_{fluxtype}_comparison_hourly_{resolution}{sim_type}_{timespan}.pdf",
+                bbox_inches="tight",
+            )  # Save plot as PNG
         plt.close()
 
         # append consolidated_metrics_df to consolidated_metrics_all
@@ -575,5 +604,5 @@ for location in locations:
         )
 
 consolidated_metrics_all.to_csv(
-    f"{outfolder}/Validation_FLUXNET_hourly_all_{timespan}.csv"
+    f"{outfolder}/Validation_FLUXNET_hourly{sim_type}_{timespan}.csv"
 )

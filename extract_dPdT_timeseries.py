@@ -91,7 +91,8 @@ def extract_datetime_from_filename(filename):
     date_str = base_filename.split("_")[-2] + "_" + base_filename.split("_")[-1]
     return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
-def exctract_dPdT_timeseries(wrf_paths, start_date, end_date):
+
+def exctract_dPdT_timeseries(wrf_paths, start_date, end_date, sim_type):
     ############# INPUT ############
     csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
     interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
@@ -149,8 +150,12 @@ def exctract_dPdT_timeseries(wrf_paths, start_date, end_date):
 
             for wrf_path in wrf_paths[1:]:
                 nc_fidcoarsegrid = nc.Dataset(os.path.join(wrf_path, wrf_file), "r")
-                GPP_coarsegrid = -nc_fidcoarsegrid.variables[f"EBIO_GEE{ref_sim}"][0, 0, :, :]
-                RECO_coarsegrid = nc_fidcoarsegrid.variables[f"EBIO_RES{ref_sim}"][0, 0, :, :]
+                GPP_coarsegrid = -nc_fidcoarsegrid.variables[f"EBIO_GEE{ref_sim}"][
+                    0, 0, :, :
+                ]
+                RECO_coarsegrid = nc_fidcoarsegrid.variables[f"EBIO_RES{ref_sim}"][
+                    0, 0, :, :
+                ]
                 HGT_coarsegrid = nc_fidcoarsegrid.variables["HGT"][0]
                 T2_coarsegrid = nc_fidcoarsegrid.variables["T2"][0] - 273.15
                 veg_type = nc_fidcoarsegrid.variables["IVGTYP"][0, :, :]
@@ -262,10 +267,12 @@ def exctract_dPdT_timeseries(wrf_paths, start_date, end_date):
 
         # Save the DataFrame to a CSV file
         output_file = os.path.join(
-            csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{res_tag}{ref_sim}.csv"
+            csv_folder,
+            f"dPdT_timeseries_{start_date}_{end_date}{res_tag}{ref_sim}{sim_type}.csv",
         )
         df_out_dPdT.to_csv(output_file, index_label="datetime")
         print(f"Data saved to {output_file}")
+
 
 def main():
 
@@ -275,22 +282,32 @@ def main():
             "-s", "--start", type=str, help="Format: 2012-07-01 01:00:00"
         )
         parser.add_argument("-e", "--end", type=str, help="Format: 2012-07-01 01:00:00")
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            help="Format: '', '_parm_err' or '_cloudy'",
+            default="",
+        )
         args = parser.parse_args()
         start_date = args.start
         end_date = args.end
-    else:  # to run locally 
+        sim_type = args.type
+    else:  # to run locally
         start_date = "2012-01-01 00:00:00"
         end_date = "2012-12-31 00:00:00"
+        sim_type = "_cloudy"  # "", "_parm_err" or "_cloudy"
 
     wrf_paths = [
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{sim_type}",
+        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km{sim_type}",
+        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km{sim_type}",
     ]
-    
-    exctract_dPdT_timeseries(wrf_paths, start_date, end_date)
+
+    exctract_dPdT_timeseries(wrf_paths, start_date, end_date, sim_type)
+
 
 if __name__ == "__main__":
     main()

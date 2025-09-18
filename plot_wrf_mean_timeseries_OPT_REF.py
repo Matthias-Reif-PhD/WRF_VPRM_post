@@ -304,6 +304,7 @@ def main():
     # end_date = "2012-06-20 00:00:00"
     STD_TOPO = 200
     ref_sim = True
+    sim_type = "_cloudy"  # "", "_pram_err" or "_cloudy"
     # convert_to_gC = 60 * 60 * 24 * 1e-6 * 12
 
     columns = ["GPP", "RECO", "NEE", "T2", "SWDOWN"]
@@ -312,11 +313,11 @@ def main():
     resolutions_diff = ["54km", "9km"]
 
     merged_df_gt = pd.read_csv(
-        f"{csv_folder}timeseries_domain_averaged_std_topo_gt_{STD_TOPO}_{start_date}_{end_date}.csv"
+        f"{csv_folder}timeseries_domain_averaged_std_topo_gt_{STD_TOPO}{sim_type}_{start_date}_{end_date}.csv"
     )
     if ref_sim:
         merged_df_gt_ref = pd.read_csv(
-            f"{csv_folder}timeseries_domain_averaged_REF_std_topo_gt_{STD_TOPO}_{start_date}_{end_date}.csv"
+            f"{csv_folder}timeseries_domain_averaged_REF_std_topo_gt_{STD_TOPO}{sim_type}_{start_date}_{end_date}.csv"
         )
 
     compute_nee(merged_df_gt, resolutions)

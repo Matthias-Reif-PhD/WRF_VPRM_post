@@ -71,8 +71,8 @@ def extract_datetime_from_filename(filename):
     return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
 
-def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
-################################# INPUT ##############################################
+def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date, sim_type):
+    ################################# INPUT ##############################################
 
     run_Pmodel = False  # set to True if you want to run Pmodel and Migliavacca RECO
     csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
@@ -101,7 +101,7 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
     CAMS_data.variables["ssrd"] = ssr_flux  # Overwrite in memory
 
     CAMS_vars = ["fco2gpp", "fco2rec", "t2m", "ssrd"]
-    factor_kgC = 1000 / 44.01 * 1000000  # conversion from kgCO2/m2/s to  mumol/m2/s
+    factor_kgC = 1000 / 44.01 * 1000000  # consim_type from kgCO2/m2/s to  mumol/m2/s
     CAMS_factors = [factor_kgC, -factor_kgC, 273.15, 1 / 10800]
 
     WRF_factors = [-1 / 3600, 1 / 3600, 273.15, 1]
@@ -217,10 +217,18 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
                         i = 0
                         # Loop through the files for the timestep
                         # for nc_f1 in file_list_27km:
-                        nc_fid54km = nc.Dataset(os.path.join(wrf_paths[4], wrf_file), "r")
-                        nc_fid27km = nc.Dataset(os.path.join(wrf_paths[3], wrf_file), "r")
-                        nc_fid9km = nc.Dataset(os.path.join(wrf_paths[2], wrf_file), "r")
-                        nc_fid3km = nc.Dataset(os.path.join(wrf_paths[1], wrf_file), "r")
+                        nc_fid54km = nc.Dataset(
+                            os.path.join(wrf_paths[4], wrf_file), "r"
+                        )
+                        nc_fid27km = nc.Dataset(
+                            os.path.join(wrf_paths[3], wrf_file), "r"
+                        )
+                        nc_fid9km = nc.Dataset(
+                            os.path.join(wrf_paths[2], wrf_file), "r"
+                        )
+                        nc_fid3km = nc.Dataset(
+                            os.path.join(wrf_paths[1], wrf_file), "r"
+                        )
                         # relace d01 by d02 in the string of wrf_file
                         wrf_file_d02 = wrf_file.replace("d01", "d02")
                         nc_fid1km = nc.Dataset(
@@ -237,10 +245,15 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
 
                         if WRF_var == "T2":
                             WRF_var_1km = (
-                                nc_fid1km.variables[WRF_var][0, 10:-10, 10:-10] - WRF_factor
+                                nc_fid1km.variables[WRF_var][0, 10:-10, 10:-10]
+                                - WRF_factor
                             )
-                            WRF_var_3km = nc_fid3km.variables[WRF_var][0, :, :] - WRF_factor
-                            WRF_var_9km = nc_fid9km.variables[WRF_var][0, :, :] - WRF_factor
+                            WRF_var_3km = (
+                                nc_fid3km.variables[WRF_var][0, :, :] - WRF_factor
+                            )
+                            WRF_var_9km = (
+                                nc_fid9km.variables[WRF_var][0, :, :] - WRF_factor
+                            )
                             WRF_var_27km = (
                                 nc_fid27km.variables[WRF_var][0, :, :] - WRF_factor
                             )
@@ -248,7 +261,9 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
                                 nc_fid54km.variables[WRF_var][0, :, :] - WRF_factor
                             )
                         elif WRF_var == "SWDOWN":
-                            WRF_var_1km = nc_fid1km.variables[WRF_var][0, 10:-10, 10:-10]
+                            WRF_var_1km = nc_fid1km.variables[WRF_var][
+                                0, 10:-10, 10:-10
+                            ]
                             WRF_var_3km = nc_fid3km.variables[WRF_var][0, :, :]
                             WRF_var_9km = nc_fid9km.variables[WRF_var][0, :, :]
                             WRF_var_27km = nc_fid27km.variables[WRF_var][0, :, :]
@@ -392,35 +407,45 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
                                     + ".nc",
                                     "r",
                                 )
-                                gpp_P_1km = nc_fid1km.variables["GPP_Pmodel"][:, :].copy()
+                                gpp_P_1km = nc_fid1km.variables["GPP_Pmodel"][
+                                    :, :
+                                ].copy()
                                 nc_fid3km = nc.Dataset(
                                     f"{gpp_folder}gpp_pmodel{subdaily}_3km_"
                                     + time_str
                                     + ".nc",
                                     "r",
                                 )
-                                gpp_P_3km = nc_fid3km.variables["GPP_Pmodel"][:, :].copy()
+                                gpp_P_3km = nc_fid3km.variables["GPP_Pmodel"][
+                                    :, :
+                                ].copy()
                                 nc_fid9km = nc.Dataset(
                                     f"{gpp_folder}gpp_pmodel{subdaily}_9km_"
                                     + time_str
                                     + ".nc",
                                     "r",
                                 )
-                                gpp_P_9km = nc_fid9km.variables["GPP_Pmodel"][:, :].copy()
+                                gpp_P_9km = nc_fid9km.variables["GPP_Pmodel"][
+                                    :, :
+                                ].copy()
                                 nc_fid27km = nc.Dataset(
                                     f"{gpp_folder}gpp_pmodel{subdaily}_27km_"
                                     + time_str
                                     + ".nc",
                                     "r",
                                 )
-                                gpp_P_27km = nc_fid27km.variables["GPP_Pmodel"][:, :].copy()
+                                gpp_P_27km = nc_fid27km.variables["GPP_Pmodel"][
+                                    :, :
+                                ].copy()
                                 nc_fid54km = nc.Dataset(
                                     f"{gpp_folder}gpp_pmodel{subdaily}_54km_"
                                     + time_str
                                     + ".nc",
                                     "r",
                                 )
-                                gpp_P_54km = nc_fid54km.variables["GPP_Pmodel"][:, :].copy()
+                                gpp_P_54km = nc_fid54km.variables["GPP_Pmodel"][
+                                    :, :
+                                ].copy()
 
                                 proj_WRF_P_var_3km = proj_on_finer_WRF_grid(
                                     lats_3km,
@@ -484,21 +509,27 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
                                     + ".nc",
                                     "r",
                                 )
-                                reco_M_1km = nc_fid1km.variables["RECO_Migli"][:, :].copy()
+                                reco_M_1km = nc_fid1km.variables["RECO_Migli"][
+                                    :, :
+                                ].copy()
                                 nc_fid3km = nc.Dataset(
                                     f"{migli_path}reco_migliavacca{subdaily}_3km_"
                                     + time_str
                                     + ".nc",
                                     "r",
                                 )
-                                reco_M_3km = nc_fid3km.variables["RECO_Migli"][:, :].copy()
+                                reco_M_3km = nc_fid3km.variables["RECO_Migli"][
+                                    :, :
+                                ].copy()
                                 nc_fid9km = nc.Dataset(
                                     f"{migli_path}reco_migliavacca{subdaily}_9km_"
                                     + time_str
                                     + ".nc",
                                     "r",
                                 )
-                                reco_M_9km = nc_fid9km.variables["RECO_Migli"][:, :].copy()
+                                reco_M_9km = nc_fid9km.variables["RECO_Migli"][
+                                    :, :
+                                ].copy()
                                 nc_fid27km = nc.Dataset(
                                     f"{migli_path}reco_migliavacca{subdaily}_27km_"
                                     + time_str
@@ -648,9 +679,10 @@ def exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date):
                     )
                 else:
                     merged_df.to_csv(
-                        f"{csv_folder}timeseries_domain_averaged{ref_sim}_std_topo_{STD_TOPO_flag}_{STD_TOPO}_{start_date}_{end_date}.csv",
+                        f"{csv_folder}timeseries_domain_averaged{ref_sim}_std_topo_{STD_TOPO_flag}_{STD_TOPO}{sim_type}_{start_date}_{end_date}.csv",
                         index=True,
                     )
+
 
 def main():
 
@@ -660,22 +692,32 @@ def main():
             "-s", "--start", type=str, help="Format: 2012-07-01 01:00:00"
         )
         parser.add_argument("-e", "--end", type=str, help="Format: 2012-07-01 01:00:00")
+        parser.add_argument(
+            "-t",
+            "--type",
+            type=str,
+            help="Format: '', '_parm_err' or '_cloudy'",
+            default="",
+        )
         args = parser.parse_args()
         start_date = args.start
         end_date = args.end
-    else:  # to run locally 
+        sim_type = args.type
+    else:  # to run locally
         start_date = "2012-01-01 00:00:00"
         end_date = "2012-12-31 00:00:00"
+        sim_type = "_cloudy"  # "" or "_cloudy" or "_parm_err"
 
     wrf_paths = [
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km{sim_type}",
     ]
-    
-    exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date)
+
+    exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date, sim_type)
+
 
 if __name__ == "__main__":
     main()
