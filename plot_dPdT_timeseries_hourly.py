@@ -13,6 +13,8 @@ outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-31 00:00:00"
 ref_tag = "_1km"
+sim_type = "_cloudy"  # "", "_parm_err" or "_cloudy"
+plot_cloudy_and_clear = True  # If True, plots both cloudy and clear simulations
 STD_TOPO = 200
 resolutions = ["54km", "9km"]
 variable_groups = {
@@ -21,18 +23,51 @@ variable_groups = {
     "dRECO": "ΔRECO [μmol/m²/s]",
 }
 ###############################42
+if plot_cloudy_and_clear:
+    input_file = os.path.join(
+        csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv"
+    )
+    ref_sim = "_REF"
+    input_file_REF = os.path.join(
+        csv_folder,
+        f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}{ref_sim}.csv",
+    )
+    # Read data
+    df = pd.read_csv(input_file, index_col="datetime", parse_dates=True)
+    # Read REF data
+    df_ref = pd.read_csv(input_file_REF, index_col="datetime", parse_dates=True)
+    input_file_cloudy = os.path.join(
+        csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}_cloudy.csv"
+    )
+    ref_sim = "_REF"
+    input_file_REF_cloudy = os.path.join(
+        csv_folder,
+        f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}{ref_sim}_cloudy.csv",
+    )
+    # Read data
+    df2 = pd.read_csv(input_file_cloudy, index_col="datetime", parse_dates=True)
+    # Read REF data
+    df_ref2 = pd.read_csv(input_file_REF_cloudy, index_col="datetime", parse_dates=True)
+    # merge the dfs
+    df = pd.concat([df, df2])
+    df_ref = pd.concat([df_ref, df_ref2])
+    # sort by date
+    df = df.sort_index()
+    df_ref = df_ref.sort_index()
+else:
+    input_file = os.path.join(
+        csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}{sim_type}.csv"
+    )
+    ref_sim = "_REF"
+    input_file_REF = os.path.join(
+        csv_folder,
+        f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}{ref_sim}{sim_type}.csv",
+    )
+    # Read data
+    df = pd.read_csv(input_file, index_col="datetime", parse_dates=True)
+    # Read REF data
+    df_ref = pd.read_csv(input_file_REF, index_col="datetime", parse_dates=True)
 
-input_file = os.path.join(
-    csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}.csv"
-)
-ref_sim = "_REF"
-input_file_REF = os.path.join(
-    csv_folder, f"dPdT_timeseries_{start_date}_{end_date}{ref_tag}{ref_sim}.csv"
-)
-df = pd.read_csv(input_file, index_col="datetime", parse_dates=True)
-
-# Read REF data
-df_ref = pd.read_csv(input_file_REF, index_col="datetime", parse_dates=True)
 
 resolution_colors = {
     "54km": "red",
@@ -127,7 +162,9 @@ def plot_combined(df, df_ref, variable_groups):
         plt.grid(True)
         plt.legend()
         plt.tight_layout()
-        plotname = f"{outfolder}hourly_avg_{var_prefix}_combined_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf"
+        if plot_cloudy_and_clear:
+            sim_type = "all"
+        plotname = f"{outfolder}hourly_avg_{var_prefix}_combined_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf"
         print(f"saved plot: {plotname}")
         # plt.show()
         plt.savefig(plotname, bbox_inches="tight")
@@ -209,10 +246,11 @@ def plot_gpp_percent_explained(
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
-
+        if plot_cloudy_and_clear:
+            sim_type = "all"
         outpath = os.path.join(
             outfolder,
-            f"hourly_percent_{var_prefix}_model_real_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
+            f"hourly_percent_{var_prefix}_model_real_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
         )
         print(f"saved percent GPP explained plot: {outpath}")
         plt.savefig(outpath, bbox_inches="tight")

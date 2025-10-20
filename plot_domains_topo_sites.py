@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import matplotlib.lines as mlines
 
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 # Load datasets
@@ -21,6 +22,8 @@ lat2 = d2["XLAT_M"].isel(Time=0)
 lon2 = d2["XLONG_M"].isel(Time=0)
 
 # Plot setup
+# fig, ax = plt.subplots(subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(10, 6))
+# ax.coastlines()
 fig = plt.figure(figsize=(12, 15))
 ax = plt.axes(projection=ccrs.PlateCarree())
 ax.set_extent(
@@ -134,6 +137,8 @@ site_lon = [
     11.4337,
     7.5781,
 ]
+
+
 site_types = [
     "GRA",
     "GRA",
@@ -152,30 +157,101 @@ site_types = [
     "GRA",
 ]
 
-# Plot site markers
-for name, lat, lon, typ in zip(site_names, site_lat, site_lon, site_types):
-    ax.plot(lon, lat, "o", color="black", markersize=3, transform=ccrs.PlateCarree())
-    label = f"{name}-{typ}"
-    dx, dy = 0.025, 0.025
-    if name == "IT-Lav":
-        dx, dy = 0.1, -0.15
-    elif name == "IT-La2":
-        dx, dy = 0.1, -0.4
-    elif name == "CH-Oe1":
-        dx, dy = -1.5, 0.1
-    elif name == "CH-Oe2":
-        dx, dy = -1.5, -0.3
-    elif name == "CH-Fru":
-        dx, dy = 0, -0.2
-    elif name == "CH-Dav":
-        dx, dy = -1.5, -0.35
-    elif name == "IT-PT1":
-        dx, dy = 0, -0.35
-    elif name == "IT-Tor":
-        dx, dy = -1.5, -0.35
-    ax.text(lon + dx, lat + dy, label, fontsize=16, transform=ccrs.PlateCarree())
+colors = [
+    "#006400",  # Evergreen
+    "#228B22",  # Deciduous
+    "#8FBC8F",  # Mixed Forest
+    "#A0522D",  # Shrubland
+    "#FFD700",  # Savannas
+    "#FFA07A",  # Cropland
+    "#7CFC00",  # Grassland
+]
+pft_labels = [
+    "Evergreen",
+    "Deciduous",
+    "Mixed Forest",
+    "Shrubland",
+    "Savannas",
+    "Cropland",
+    "Grassland",
+]
+pft_codes = ["ENF", "DBF", "MF", "SHB", "SAV", "CRO", "GRA"]
 
-# plt.title("Overlay Domains with Sites", fontsize=16)
+# Map PFT codes to colors
+pft_color_map = dict(zip(pft_codes, colors))
+
+# Plot sites with PFT colors
+for lon, lat, typ in zip(site_lon, site_lat, site_types):
+    ax.plot(
+        lon,
+        lat,
+        "o",
+        color=pft_color_map.get(typ, "#808080"),
+        markersize=12,
+        transform=ccrs.PlateCarree(),
+        markeredgecolor="black",
+        markeredgewidth=1.5,
+    )
+
+# Build legend handles
+handles = [
+    mlines.Line2D(
+        [], [], color=col, marker="o", linestyle="None", markersize=10, label=lbl
+    )
+    for col, lbl in zip(colors, pft_labels)
+]
+
+ax.legend(handles=handles, loc="lower left", fontsize=12, frameon=True)
+
 plt.tight_layout()
-plt.show()
-plt.savefig(f"{outfolder}/domains_topo_sites.pdf", bbox_inches="tight")
+plt.savefig("domains_topo_sites.pdf", bbox_inches="tight")
+
+
+# site_types = [
+#     "GRA",
+#     "GRA",
+#     "ENF",
+#     "GRA",
+#     "MF",
+#     "GRA",
+#     "CRO",
+#     "ENF",
+#     "DBF",
+#     "ENF",
+#     "ENF",
+#     "GRA",
+#     "DBF",
+#     "ENF",
+#     "GRA",
+# ]
+
+# # Plot site markers
+# for name, lat, lon, typ in zip(site_names, site_lat, site_lon, site_types):
+#     ax.plot(lon, lat, "o", color="black", markersize=3, transform=ccrs.PlateCarree())
+#     label = f"{name}-{typ}"
+#     dx, dy = 0.025, 0.025
+#     ax.text(lon + dx, lat + dy, label, fontsize=16, transform=ccrs.PlateCarree())
+
+# # plt.title("Overlay Domains with Sites", fontsize=16)
+# plt.tight_layout()
+# plt.show()
+# plt.savefig(f"{outfolder}/domains_topo_sites.pdf", bbox_inches="tight")
+
+
+#     # dx, dy = 0.025, 0.025
+#     # if name == "IT-Lav":
+#     #     dx, dy = 0.1, -0.15
+#     # elif name == "IT-La2":
+#     #     dx, dy = 0.1, -0.4
+#     # elif name == "CH-Oe1":
+#     #     dx, dy = -1.5, 0.1
+#     # elif name == "CH-Oe2":
+#     #     dx, dy = -1.5, -0.3
+#     # elif name == "CH-Fru":
+#     #     dx, dy = 0, -0.2
+#     # elif name == "CH-Dav":
+#     #     dx, dy = -1.5, -0.35
+#     # elif name == "IT-PT1":
+#     #     dx, dy = 0, -0.35
+#     # elif name == "IT-Tor":
+#     #     dx, dy = -1.5, -0.35

@@ -15,8 +15,8 @@ interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 200
 # Set time
-dateime = "2012-07-27_12"
-subfolder = ""  # "" or "_cloudy"
+dateime = "2012-07-15_12"
+subfolder = "_cloudy"  # "" or "_cloudy"
 wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
 wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
 t_file_fra = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d02_2012_1km/VPRM_input_VEG_FRA_d02_2012.nc"
@@ -435,8 +435,22 @@ styled_imshow_plot(
 styled_imshow_plot(dT_model, -15, 15, "coolwarm_r", "ΔT [C]", "dT_model")
 
 # CLDFRC_max
-styled_imshow_plot(CLDFRC_1km_max, 0, 10, "Blues", "cloud fraction [%]", "CLDFRC_1km")
-styled_imshow_plot(CLDFRC_54km_max, 0, 10, "Blues", "cloud fraction [%]", "CLDFRC_54km")
+styled_imshow_plot(
+    CLDFRC_1km_max,
+    np.nanmin(CLDFRC_1km_max),
+    np.nanmax(CLDFRC_1km_max),
+    "Blues",
+    "cloud fraction [%]",
+    "CLDFRC_1km",
+)
+styled_imshow_plot(
+    CLDFRC_54km_max,
+    np.nanmin(CLDFRC_54km_max),
+    np.nanmax(CLDFRC_54km_max),
+    "Blues",
+    "cloud fraction [%]",
+    "CLDFRC_54km",
+)
 
 # Temperature
 styled_imshow_plot(T2_1km, 0, 35, "coolwarm_r", "[°C]", "T2_1km")

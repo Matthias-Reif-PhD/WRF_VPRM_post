@@ -113,7 +113,10 @@ STD_TOPO_flags = ["gt"]  # "lt" lower than or "gt" greater than STD_TOPO
 ref_sim = "_REF"  # "_REF" to use also REF simulation or "" for only tuned values
 subdaily = ""  # "_subdailyC3" or ""
 coarse_domains = ["54km", "9km"]  # , "27km", "9km", "3km"
-
+subfolder = ""  # "" or "_cloudy"
+cloudy_and_clear = True  # if False only clearsky, if True cloudy and clear
+cloudy_and_clear_str = "_cloudy_and_clear"
+subfolders = [subfolder] if not cloudy_and_clear else ["", "_cloudy"]
 wrf_files = "wrfout_d01*"
 wrf_files_1km = "wrfout_d02*"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
@@ -159,43 +162,64 @@ start_date_obj = datetime.strptime(start_date, "%Y-%m-%d %H:%M:%S")
 end_date_obj = datetime.strptime(end_date, "%Y-%m-%d %H:%M:%S")
 
 ############################### start the looop #############################################
+
+
 for coarse_domain in coarse_domains:
-    if coarse_domain == "3km":
-        wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km"
-    elif coarse_domain == "9km":
-        wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km"
-    elif coarse_domain == "27km":
-        wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km"
-    elif coarse_domain == "54km":
-        wrf_path_i = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km"
+    file_list_1km, file_list_hour_1km = [], []
+    file_list, file_list_hour = [], []
 
-    wrf_paths = [
-        "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
-        wrf_path_i,
-    ]
+    for subfolder in subfolders:
+        if coarse_domain == "3km":
+            wrf_path_i = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km{subfolder}"
+        elif coarse_domain == "9km":
+            wrf_path_i = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km{subfolder}"
+        elif coarse_domain == "27km":
+            wrf_path_i = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km{subfolder}"
+        elif coarse_domain == "54km":
+            wrf_path_i = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km{subfolder}"
 
-    file_list_1km = [
-        os.path.basename(f)  # Extract only the filename
-        for f in sorted(glob.glob(os.path.join(wrf_paths[0], wrf_files_1km)))
-        if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
-    ]
-    file_list_hour_1km = [
-        f
-        for f in file_list_1km
-        if hour_start <= extract_datetime_from_filename(f).hour <= hour_end
-    ]
+        wrf_paths = [
+            f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}",
+            wrf_path_i,
+        ]
 
-    file_list = [
-        os.path.basename(f)  # Extract only the filename
-        for f in sorted(glob.glob(os.path.join(wrf_paths[1], wrf_files)))
-        if start_date_obj <= extract_datetime_from_filename(f) <= end_date_obj
-    ]
+        files_1km = [
+            f
+            for f in sorted(glob.glob(os.path.join(wrf_paths[0], wrf_files_1km)))
+            if start_date_obj
+            <= extract_datetime_from_filename(os.path.basename(f))
+            <= end_date_obj
+        ]
+        file_list_1km.extend(files_1km)
 
-    file_list_hour = [
-        f
-        for f in file_list
-        if hour_start <= extract_datetime_from_filename(f).hour <= hour_end
-    ]
+        file_list_hour_1km.extend(
+            f
+            for f in files_1km
+            if hour_start
+            <= extract_datetime_from_filename(os.path.basename(f)).hour
+            <= hour_end
+        )
+
+        files = [
+            f
+            for f in sorted(glob.glob(os.path.join(wrf_paths[1], wrf_files)))
+            if start_date_obj
+            <= extract_datetime_from_filename(os.path.basename(f))
+            <= end_date_obj
+        ]
+        file_list.extend(files)
+
+        file_list_hour.extend(
+            f
+            for f in files
+            if hour_start
+            <= extract_datetime_from_filename(os.path.basename(f)).hour
+            <= hour_end
+        )
+
+    # optional: ensure chronological order after merging clear+cloudy
+    file_list_hour_1km.sort()
+    file_list_hour.sort()
 
     timestamps = [extract_datetime_from_filename(f) for f in file_list_hour]
     time_index = pd.to_datetime(timestamps)
@@ -221,15 +245,8 @@ for coarse_domain in coarse_domains:
                 ):
                     # WRF
                     i = 0
-                    # Loop through the files for the timestep
-                    # for nc_f1 in file_list_27km:
-                    # in wrf_file, replace d02 with d01 for all coarse domains
-                    nc_fid1km = nc.Dataset(
-                        os.path.join(wrf_paths[0], wrf_file_1km), "r"
-                    )
-                    nc_fid_coarse_domain = nc.Dataset(
-                        os.path.join(wrf_paths[1], wrf_file), "r"
-                    )
+                    nc_fid1km = nc.Dataset(wrf_file_1km, "r")
+                    nc_fid_coarse_domain = nc.Dataset(wrf_file, "r")
 
                     times_variable = nc_fid1km.variables["Times"]
                     start_date_bytes = times_variable[0, :].tobytes()
@@ -574,19 +591,19 @@ for coarse_domain in coarse_domains:
             diff_hgt_mean = np.nanmean(diff_hgt)
             diff_hgt_mean_nonproj = np.nanmean(hgt_coarse_domain) - np.nanmean(hgt_1km)
             print(
-                f"Mean difference in height between {coarse_domain} and 1km is {diff_hgt_mean:.2f} m"
+                f"Mean difference in height between {coarse_domain} and 1km is {diff_hgt_mean:.2f}m"
             )
             print(
-                f"Mean of 1km is {np.nanmean(hgt_1km):.2f} and of {coarse_domain} is {np.nanmean(hgt_coarse_domain):.2f} with difference  {diff_hgt_mean_nonproj:.2f}  "
+                f"Unmasked means of 1km: {np.nanmean(hgt_1km):.2f}m and of {coarse_domain}: {np.nanmean(hgt_coarse_domain):.2f}m with difference  {diff_hgt_mean_nonproj:.2f}m  "
             )
 
             if plot_coeff:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
-                ax.set_ylim(-3, 3)
+                ax.set_ylim(-1.5, 1.5)
                 ax.set_xlim(T_ref_min, T_ref_max)
                 ax.set_xlabel(r"$T_{\mathrm{ref}}$ °C", fontsize=20)
                 ax.set_ylabel("[μmol m² s⁻¹ °C⁻¹]", fontsize=20)
-                
+
                 ax.tick_params(labelsize=20)
                 ax.grid(True, linestyle="--", alpha=0.5)
                 ax.legend(fontsize=16)
@@ -594,8 +611,11 @@ for coarse_domain in coarse_domains:
                 # ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")
                 figname = (
                     outfolder
-                    + f"WRF_Tref_coefficients{ref_sim}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.pdf"
+                    + f"WRF_Tref_coefficients{ref_sim}{cloudy_and_clear_str}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.pdf"
                 )
                 plt.savefig(figname, bbox_inches="tight")
                 plt.close()
+                df_coeff.to_csv(
+                    figname.replace(".pdf", ".csv"), index_label="T_ref [°C]"
+                )
             del df_coeff

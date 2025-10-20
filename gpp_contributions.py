@@ -22,9 +22,9 @@ start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-31 00:00:00"
 wrf_basepath = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS"  # without resolution suffix
 dx_all = ["_54km", "_9km"]  # "_54km",
-subfolder = ""  # "_pram_err" or "_cloudy" TODO _rainy
+sim_type = "_cloudy"  # "", "_cloudy"
 plots_folder = (
-    f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/components{subfolder}_L2_"
+    f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/components{sim_type}_L2_"
 )
 interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 STD_TOPO = 200
@@ -295,14 +295,16 @@ for dx in dx_all:
             "dPscale",
             "dRAD",
             "dEVI",
-            "dGPP",
-            "dGPP_validate",
-            "dGPP_lin_per",
+            # "dGPP",
+            # "dGPP_validate",
+            # "dGPP_lin_per",
         ]
     )
 
     # Collect all files
-    files_d01 = sorted(glob.glob(os.path.join(wrf_basepath + dx, f"wrfout_d01*")))
+    files_d01 = sorted(
+        glob.glob(os.path.join(wrf_basepath + dx + sim_type, f"wrfout_d01*"))
+    )
     files_d01 = [os.path.basename(f) for f in files_d01]
 
     file_by_day = defaultdict(list)
@@ -327,12 +329,8 @@ for dx in dx_all:
         print(f"processing: {time} at {dx}")
         date_time = wrf_file[11:24]
         date = date_time.split("_")[0]
-        wrfinput_path_1km = (
-            f"{wrf_basepath}_1km{subfolder}/wrfout_d02_{date_time}:00:00"
-        )
-        wrfinput_path_d01 = (
-            f"{wrf_basepath}{dx}{subfolder}/wrfout_d01_{date_time}:00:00"
-        )
+        wrfinput_path_1km = f"{wrf_basepath}_1km{sim_type}/wrfout_d02_{date_time}:00:00"
+        wrfinput_path_d01 = f"{wrf_basepath}{dx}{sim_type}/wrfout_d01_{date_time}:00:00"
         vprm_input_path_1km = f"/scratch/c7071034/DATA/VPRM_input/vprm_corine_1km/vprm_input_d02_{date}_00:00:00.nc"
         vprm_input_path_d01 = f"/scratch/c7071034/DATA/VPRM_input/vprm_corine{dx}/vprm_input_d01_{date}_00:00:00.nc"
 
@@ -443,7 +441,7 @@ for dx in dx_all:
             "GRA": 0.771,
             "OTH": 0.00,
         }
-        if subfolder == "_pram_err":
+        if sim_type == "_pram_err":
             PAR0_of_PFT = {
                 "ENF": 316.96,
                 "DBF": 310.78,
@@ -873,9 +871,9 @@ for dx in dx_all:
             dPscale_mean,
             dRAD_mean,
             dEVI_mean,
-            dGPP_mean,
-            dGPP_validate_mean,
-            lin_pert_mean,
+            # dGPP_mean,
+            # dGPP_validate_mean,
+            # lin_pert_mean,
         ]
 
         if print_output:
@@ -998,7 +996,7 @@ for dx in dx_all:
             color="k",
             label="Residual",
         )
-        ax.set_ylabel("Linear Perturbation Δ [-]")
+        ax.set_ylabel(r"contributions C$_i$ [μmol/m²/s]")
         ax.set_xlabel("UTC [h]")
         # set xlabels to 1-23h
         ax.set_xticks(np.arange(len(lin_pert_mean_diffs_df_hour.index)))
@@ -1008,6 +1006,7 @@ for dx in dx_all:
         # ax.set_xticklabels(ax.get_xticklabels(), ha="right")
         ax.legend(driver_names_plot + ["Residual"], loc="upper left")
         ax.grid(True)
+        ax.set_ylim(-1.2, 0.6)
         plt.tight_layout()
         # plt.show()
 

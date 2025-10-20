@@ -234,14 +234,24 @@ def exctract_dPdT_timeseries(wrf_paths, start_date, end_date, sim_type):
                 dRECO_model[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
                 dRECO_real[proj_landmask_coarsegrid * stdh_mask == 0] = np.nan
 
-                dT_calc_mean = np.nanmean(dT_calc)
-                dT_model_mean = np.nanmean(dT_model)
-                dGPP_calc_mean = np.nanmean(dGPP_calc)
-                dGPP_model_mean = np.nanmean(dGPP_model)
-                dGPP_real_mean = np.nanmean(dGPP_real)
-                dRECO_calc_mean = np.nanmean(dRECO_calc)
-                dRECO_model_mean = np.nanmean(dRECO_model)
-                dRECO_real_mean = np.nanmean(dRECO_real)
+                try:
+                    dT_calc_mean = np.nanmean(dT_calc)
+                    dT_model_mean = np.nanmean(dT_model)
+                    dGPP_calc_mean = np.nanmean(dGPP_calc)
+                    dGPP_model_mean = np.nanmean(dGPP_model)
+                    dGPP_real_mean = np.nanmean(dGPP_real)
+                    dRECO_calc_mean = np.nanmean(dRECO_calc)
+                    dRECO_model_mean = np.nanmean(dRECO_model)
+                    dRECO_real_mean = np.nanmean(dRECO_real)
+                except:
+                    dT_calc_mean = np.nan
+                    dT_model_mean = np.nan
+                    dGPP_calc_mean = np.nan
+                    dGPP_model_mean = np.nan
+                    dGPP_real_mean = np.nan
+                    dRECO_calc_mean = np.nan
+                    dRECO_model_mean = np.nan
+                    dRECO_real_mean = np.nan
 
                 time = extract_datetime_from_filename(wrf_file)
                 resolution = wrf_path.split("_")[2]

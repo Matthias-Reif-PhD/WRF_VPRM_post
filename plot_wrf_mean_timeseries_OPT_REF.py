@@ -20,6 +20,98 @@ def group_hourly_average(df: pd.DataFrame) -> pd.DataFrame:
     return df[numeric_columns].groupby("hour").mean()
 
 
+def plot_timeseries_differences(
+    df: pd.DataFrame,
+    df_ref: pd.DataFrame,
+    column: str,
+    unit: str,
+    resolutions: list,
+    outfolder: str,
+    ref_sim: bool,
+    resolution_colors: dict,
+    STD_TOPO: int,
+    start_date: str,
+    end_date: str,
+    sim_type: str,
+):
+    plt.figure(figsize=(15, 7))
+    xticks, xticklabels = [], []
+
+    for res in resolutions:
+        if res in ["CAMS", "1km"]:
+            continue  # skip CAMS and baseline 1km
+
+        color = resolution_colors[res]
+        series_col = f"{column}_{res}"
+        baseline_col = f"{column}_1km"
+
+        if series_col not in df or baseline_col not in df:
+            continue
+
+        diff = (df[series_col] - df[baseline_col]).dropna()
+
+        grouped = diff.groupby(diff.index.date)
+        valid_days = [
+            (date, group) for date, group in grouped if not group.dropna().eq(0).all()
+        ]
+
+        current_x = 0
+        for i, (date, group) in enumerate(valid_days):
+            x = np.arange(len(group)) + current_x
+            plt.plot(x, group.values, linestyle="-", linewidth=1.5, color=color)
+            if res == resolutions[0]:
+                xticks.append(current_x)
+                xticklabels.append(str(date))
+            if i < len(valid_days) - 1:
+                gap = len(group) + 1
+                plt.axvspan(
+                    current_x + len(group),
+                    current_x + gap,
+                    color="lightgray",
+                    alpha=0.5,
+                )
+            current_x += len(group) + 1
+        plt.plot([], [], label=f"{column} {res}-1km (ALPS)", linestyle="-", color=color)
+
+        if ref_sim:
+            if series_col in df_ref and baseline_col in df_ref:
+                diff_ref = (df_ref[series_col] - df_ref[baseline_col]).dropna()
+                grouped_ref = diff_ref.groupby(diff_ref.index.date)
+                valid_days_ref = [
+                    (date, group)
+                    for date, group in grouped_ref
+                    if not group.dropna().eq(0).all()
+                ]
+
+                current_x = 0
+                for i, (date, group) in enumerate(valid_days_ref):
+                    x = np.arange(len(group)) + current_x
+                    plt.plot(
+                        x, group.values, linestyle="--", linewidth=1.5, color=color
+                    )
+                    current_x += len(group) + 1
+                plt.plot(
+                    [],
+                    [],
+                    label=f"{column} {res}-1km (REF)",
+                    linestyle="--",
+                    color=color,
+                )
+
+    plt.xticks(xticks, xticklabels, ha="left")
+    plt.xlabel("Date", fontsize=20)
+    plt.ylabel(r"$\Delta$" + f"{column} {unit}", fontsize=20)
+    plt.tick_params(labelsize=20, labelrotation=45)
+    plt.grid(True, linestyle="--", alpha=0.5)
+    plt.legend(fontsize=16)
+    plt.tight_layout()
+    plt.savefig(
+        f"{outfolder}timeseries_diff_of_resolutions_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
+        bbox_inches="tight",
+    )
+    plt.close()
+
+
 def plot_timeseries_by_resolution(
     df: pd.DataFrame,
     df_ref: pd.DataFrame,
@@ -32,6 +124,7 @@ def plot_timeseries_by_resolution(
     STD_TOPO: int,
     start_date: str,
     end_date: str,
+    sim_type: str,
 ):
     plt.figure(figsize=(15, 7))
     xticks, xticklabels = [], []
@@ -97,7 +190,7 @@ def plot_timeseries_by_resolution(
     plt.legend(fontsize=16)
     plt.tight_layout()
     plt.savefig(
-        f"{outfolder}timeseries_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
+        f"{outfolder}timeseries_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
         bbox_inches="tight",
     )
     plt.close()
@@ -115,6 +208,7 @@ def plot_hourly_averages(
     STD_TOPO: int,
     start_date: str,
     end_date: str,
+    sim_type: str,
 ):
     plt.figure(figsize=(10, 6))
     for res in resolutions:
@@ -148,7 +242,7 @@ def plot_hourly_averages(
     plt.legend(fontsize=16)
     plt.tight_layout()
     plt.savefig(
-        f"{outfolder}timeseries_hourly_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
+        f"{outfolder}timeseries_hourly_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
         bbox_inches="tight",
     )
     plt.close()
@@ -166,6 +260,7 @@ def plot_hourly_differences(
     STD_TOPO: int,
     start_date: str,
     end_date: str,
+    sim_type: str,
 ):
     plt.figure(figsize=(10, 6))
     for res in resolutions_diff + ["CAMS"]:
@@ -202,7 +297,7 @@ def plot_hourly_differences(
     plt.tick_params(axis="y", labelsize=24)
     plt.tight_layout()
     plt.savefig(
-        f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged_std_topo_{STD_TOPO}_{start_date}_{end_date}.pdf",
+        f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
         bbox_inches="tight",
     )
     plt.close()
@@ -304,7 +399,7 @@ def main():
     # end_date = "2012-06-20 00:00:00"
     STD_TOPO = 200
     ref_sim = True
-    sim_type = "_cloudy"  # "", "_pram_err" or "_cloudy"
+    sim_type = ""  # "", "_pram_err" or "_cloudy"
     # convert_to_gC = 60 * 60 * 24 * 1e-6 * 12
 
     columns = ["GPP", "RECO", "NEE", "T2", "SWDOWN"]
@@ -332,9 +427,9 @@ def main():
         hourly_avg, hourly_avg_ref, columns, resolutions, ref_sim
     )
 
-    df_means.to_csv(f"{outfolder}hourly_means_summary.csv")
-    df_diffs.to_csv(f"{outfolder}hourly_diff_means_summary.csv")
-    df_pct.to_csv(f"{outfolder}hourly_diff_percentage_summary.csv")
+    df_means.to_csv(f"{outfolder}hourly_means_summary{sim_type}.csv")
+    df_diffs.to_csv(f"{outfolder}hourly_diff_means_summary{sim_type}.csv")
+    df_pct.to_csv(f"{outfolder}hourly_diff_percentage_summary{sim_type}.csv")
     print(df_means, df_diffs, df_pct)
 
     resolution_colors = {
@@ -358,6 +453,21 @@ def main():
             STD_TOPO,
             start_date,
             end_date,
+            sim_type,
+        )
+        plot_timeseries_differences(
+            merged_df_gt,
+            merged_df_gt_ref,
+            column,
+            unit,
+            resolutions,
+            outfolder,
+            ref_sim,
+            resolution_colors,
+            STD_TOPO,
+            start_date,
+            end_date,
+            sim_type,
         )
         plot_hourly_averages(
             hourly_avg,
@@ -371,6 +481,7 @@ def main():
             STD_TOPO,
             start_date,
             end_date,
+            sim_type,
         )
         plot_hourly_differences(
             hourly_avg,
@@ -384,6 +495,7 @@ def main():
             STD_TOPO,
             start_date,
             end_date,
+            sim_type,
         )
 
 
