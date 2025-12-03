@@ -1,4 +1,8 @@
 import numpy as np
+import matplotlib
+
+# use non-interactive backend for headless environments
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import netCDF4 as nc
 from scipy.interpolate import griddata
@@ -477,7 +481,7 @@ styled_imshow_plot(
     0,
     30,
     "PiYG",
-    r"GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "GPP_1km",
 )
 
@@ -487,7 +491,7 @@ styled_imshow_plot(
     0,
     30,
     "PiYG",
-    r"GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "GPP_54",
 )
 
@@ -497,7 +501,7 @@ styled_imshow_plot(
     -15,
     15,
     "PiYG",
-    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"$\Delta_\text{res}$GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "GPP_54-1km",
 )
 
@@ -507,7 +511,7 @@ styled_imshow_plot(
     -2,
     2,
     "PiYG",
-    r"dGPP/dT ([$\mu$ mol m$^{-2}$ s$^{-1}$ °C$^{-1}$]",
+    r"dGPP/dT ([$\mu$mol m$^{-2}$ s$^{-1}$ °C$^{-1}$]",
     "dGPPdT_54km",
 )
 
@@ -533,7 +537,7 @@ styled_imshow_plot(
     -15,
     15,
     "PiYG",
-    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"$\Delta_\text{res}$GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "dGPP_calc",
 )
 styled_imshow_plot(
@@ -541,7 +545,7 @@ styled_imshow_plot(
     -15,
     15,
     "PiYG",
-    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"$\Delta_\text{res}$GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "dGPP_model",
 )
 styled_imshow_plot(
@@ -549,7 +553,7 @@ styled_imshow_plot(
     -15,
     15,
     "PiYG",
-    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"$\Delta_\text{res}$GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "dGPP_model-calc",
 )
 
@@ -559,7 +563,7 @@ styled_imshow_plot(
     -15,
     15,
     "PiYG",
-    r"$\Delta_\text{res}$RECO [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    r"$\Delta_\text{res}$RECO [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "dRECO_model",
 )
 print("Plots done.")

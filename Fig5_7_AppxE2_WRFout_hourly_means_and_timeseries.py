@@ -1,3 +1,19 @@
+"""
+Fig5_WRFout_hourly_means_and_timeseries.py
+
+Refactored (minimal changes) from `plot_wrf_mean_timeseries_OPT_REF.py`.
+- Kept original functions and logic intact.
+- Removed duplicate imports and stray tokens.
+- Use non-interactive Matplotlib backend (`Agg`) for headless runs.
+"""
+
+from __future__ import annotations
+
+import matplotlib
+
+# use non-interactive backend for headless environments
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
@@ -6,10 +22,10 @@ import pandas as pd
 # Variable labels for scientific LaTeX-style plotting
 var_labels = {
     "GPP": "GPP",
-    "RECO": "R$_{\\text{eco}}$",
+    "RECO": r"R$_{\text{eco}}$",
     "NEE": "NEE",
-    "T2": "T$_{\\text{2m}}$",
-    "SWDOWN": "S$_\\downarrow$",
+    "T2": r"T$_{\text{2m}}$",
+    "SWDOWN": r"S$_\downarrow$",
 }
 
 
@@ -28,22 +44,6 @@ def preprocess_datetime(df: pd.DataFrame) -> pd.DataFrame:
 def group_hourly_average(df: pd.DataFrame) -> pd.DataFrame:
     numeric_columns = df.select_dtypes(include=["number"]).columns
     return df[numeric_columns].groupby("hour").mean()
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import matplotlib.dates as mdates
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import matplotlib.dates as mdates
-
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 
 
 def plot_timeseries_differences(
@@ -150,105 +150,6 @@ def plot_timeseries_differences(
     plt.close()
 
 
-# def plot_timeseries_differences2(
-#     df: pd.DataFrame,
-#     df_ref: pd.DataFrame,
-#     column: str,
-#     unit: str,
-#     resolutions: list,
-#     outfolder: str,
-#     ref_sim: bool,
-#     resolution_colors: dict,
-#     STD_TOPO: int,
-#     start_date: str,
-#     end_date: str,
-#     sim_type: str,
-# ):
-#     plt.figure(figsize=(15, 7))
-#     xticks, xticklabels = [], []
-
-#     for res in resolutions:
-#         if res in ["CAMS", "1km"]:
-#             continue
-
-#         color = resolution_colors[res]
-#         series_col = f"{column}_{res}"
-#         baseline_col = f"{column}_1km"
-
-#         if series_col not in df or baseline_col not in df:
-#             continue
-
-#         diff = (df[series_col] - df[baseline_col]).dropna()
-#         grouped = diff.groupby(diff.index.date)
-#         valid_days = [
-#             (date, group) for date, group in grouped if not group.dropna().eq(0).all()
-#         ]
-
-#         current_x = 0
-#         for i, (date, group) in enumerate(valid_days):
-#             x = np.arange(len(group)) + current_x
-#             plt.plot(x, group.values, linestyle="-", linewidth=1.5, color=color)
-#             if res == resolutions[0]:
-#                 xticks.append(current_x)
-#                 xticklabels.append(str(date))
-#             if i < len(valid_days) - 1:
-#                 gap = len(group) + 1
-#                 plt.axvspan(
-#                     current_x + len(group),
-#                     current_x + gap,
-#                     color="lightgray",
-#                     alpha=0.5,
-#                 )
-#             current_x += len(group) + 1
-#         plt.plot(
-#             [],
-#             [],
-#             label=f"{var_labels[column]} ({res}-1km, ALPS)",
-#             linestyle="-",
-#             color=color,
-#         )
-
-#         if ref_sim:
-#             if series_col in df_ref and baseline_col in df_ref:
-#                 diff_ref = (df_ref[series_col] - df_ref[baseline_col]).dropna()
-#                 grouped_ref = diff_ref.groupby(diff_ref.index.date)
-#                 valid_days_ref = [
-#                     (date, group)
-#                     for date, group in grouped_ref
-#                     if not group.dropna().eq(0).all()
-#                 ]
-
-#                 current_x = 0
-#                 for i, (date, group) in enumerate(valid_days_ref):
-#                     x = np.arange(len(group)) + current_x
-#                     plt.plot(
-#                         x, group.values, linestyle="--", linewidth=1.5, color=color
-#                     )
-#                     current_x += len(group) + 1
-#                 plt.plot(
-#                     [],
-#                     [],
-#                     label=f"{var_labels[column]} ({res}-1km, REF)",
-#                     linestyle="--",
-#                     color=color,
-#                 )
-
-#     plt.xticks(xticks, xticklabels, ha="left")
-#     plt.xlabel("Date", fontsize=20)
-#     plt.ylabel(r"$\Delta_\text{res}$" + f"{var_labels[column]} {unit}", fontsize=20)
-#     plt.tick_params(labelsize=20, labelrotation=90)
-#     plt.grid(True, linestyle="--", alpha=0.5)
-#     plt.legend(fontsize=16)
-#     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-#     plt.gcf().autofmt_xdate()
-#     plt.tight_layout()
-#     plt.savefig(
-#         f"{outfolder}timeseries_diff_of_resolutions_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
-#         bbox_inches="tight",
-#     )
-#     plt.close()
-
-
 def plot_timeseries_by_resolution(
     df: pd.DataFrame,
     df_ref: pd.DataFrame,
@@ -275,10 +176,6 @@ def plot_timeseries_by_resolution(
             label_opt = f"{var_labels[column]} ({res})"
         else:
             label_opt = f"{var_labels[column]} ({res}, ALPS)"
-            # if column == "RECO":
-            #     label_opt = r"R$_\text{eco}$" + f" ({res}, ALPS)"
-            # elif column == "SWDOWN":
-            #     label_opt = r"S$_\downarrow$" + f" ({res}, ALPS)"
 
         y = df[series_col].dropna()
         grouped = y.groupby(y.index.date)
@@ -360,7 +257,6 @@ def plot_hourly_averages(
     plt.figure(figsize=(10, 6))
     for res in resolutions:
         series = hourly_avg[f"{column}_{res}"].dropna()
-        # label_opt = f"{column}_{res}" if res == "CAMS" else f"{column}_{res} (ALPS)"
         if res == "CAMS":
             label_opt = f"{var_labels[column]} ({res})"
         else:

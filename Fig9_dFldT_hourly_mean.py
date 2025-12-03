@@ -1,11 +1,13 @@
+import matplotlib
+
+# use non-interactive backend for headless environments
+matplotlib.use("Agg")
+
 import matplotlib.colors as mcolors
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 ########### Settings ###########
 csv_folder = "/scratch/c7071034/DATA/WRFOUT/csv/"
@@ -19,8 +21,8 @@ STD_TOPO = 200
 resolutions = ["54km", "9km"]
 variable_groups = {
     "dT": "ΔT [°C]",
-    "dGPP": "ΔGPP [μmol/m²/s]",
-    "dRECO": r"ΔR$_\text{eco}$ [μmol/m²/s]",
+    "dGPP": r"ΔGPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
+    "dRECO": r"ΔR$_\text{eco}$ [$\mu$mol m$^{-2}$ s$^{-1}$]",
 }
 ###############################42
 if plot_cloudy_and_clear:

@@ -1,3 +1,7 @@
+import matplotlib
+
+matplotlib.use("Agg")
+
 import numpy as np
 import matplotlib.pyplot as plt
 import netCDF4 as nc
@@ -6,7 +10,6 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from scipy.ndimage import binary_erosion, distance_transform_edt
 import xarray as xr
-import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import glob
@@ -76,6 +79,7 @@ def plot_lin_pert_results(contribs_grid, residual, driver_names=None):
         f"{plots_folder}_lin_pertubation_panels_{date_time}h_{dx}.pdf",
         bbox_inches="tight",
     )
+    plt.close()
 
 
 def linear_perturbation_analysis(
@@ -180,6 +184,7 @@ def styled_imshow_plot_d01(data, vmin, vmax, cmap, label, filename):
     plt.tight_layout()
 
     plt.savefig(f"{plots_folder}{filename}_{date_time}h.pdf", bbox_inches="tight")
+    plt.close()
 
 
 def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
@@ -1023,5 +1028,6 @@ for dx in dx_all:
             f"{plots_folder}lin_pert_mean_diffs_{dx[1:]}-1km_{date_str_min}_{date_str_max}.pdf",
             dpi=300,
         )
+        plt.close()
 
     print(f"finished {dx}")
