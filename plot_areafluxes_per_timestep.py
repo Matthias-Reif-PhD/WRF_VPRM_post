@@ -15,8 +15,8 @@ interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 200
 # Set time
-dateime = "2012-07-15_12"
-subfolder = "_cloudy"  # "" or "_cloudy"
+dateime = "2012-07-27_12"
+subfolder = ""  # "" or "_cloudy"
 wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
 wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
 t_file_fra = "/scratch/c7071034/DATA/pyVPRM/pyVPRM_examples/wrf_preprocessor/out_d02_2012_1km/VPRM_input_VEG_FRA_d02_2012.nc"
@@ -290,7 +290,7 @@ for idx, pft in enumerate(PAR0_of_PFT.keys()):
             (1 / (1 + (SWDOWN_1km * SWDOWN_TO_PAR) / PAR0)) * SWDOWN_1km * SWDOWN_TO_PAR
         ) * vegfrac
 mask_idx8_100 = veg_frac_map[7, :, :].values < 1.0
-dRAD_scale = (proj_RAD_scale_54km - RAD_scale_1km) / proj_RAD_scale_54km * 100
+dRAD_scale = proj_RAD_scale_54km - RAD_scale_1km
 RAD_scale_1km[proj_landmask_54km * stdh_mask * mask_idx8_100 == 0] = np.nan
 # # --- Apply masks to all vars ---
 all_fields = [
@@ -364,32 +364,75 @@ def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
 
 
 styled_imshow_plot(
-    dGPP_calc, -15, 15, "PiYG", r"$\Delta$GPP$_{calc}$ [μmol/m²/s]", "dGPP_model_02"
+    dT_model,
+    -15,
+    15,
+    "coolwarm_r",
+    r"$\Delta_\text{res}$T$_\text{2m}$ [°C]",
+    "dT_model",
 )
 
 styled_imshow_plot(
     dRAD_scale,
-    np.nanmin(-200),
-    np.nanmax(200),
+    np.nanmin(dRAD_scale),
+    np.nanmax(dRAD_scale),
     "RdBu",
-    r"$\Delta \text{RAD}$ [W/m$^2$]",
+    r"$\Delta_\text{res}$RAD [$\mu$mol m$^{-2}$ s$^{-1}$]",
     "RAD_scale_54-1km",
 )
+
+styled_imshow_plot(
+    proj_RAD_scale_54km,
+    np.nanmin(0),
+    np.nanmax(RAD_scale_1km),
+    "YlOrRd",
+    r"RAD [$\mu$mol m$^{-2}$ s$^{-1}$]",
+    "RAD_scale_54km",
+)
+
+styled_imshow_plot(
+    RAD_scale_1km,
+    np.nanmin(0),
+    np.nanmax(RAD_scale_1km),
+    "YlOrRd",
+    r"RAD [$\mu$mol m$^{-2}$ s$^{-1}$]",
+    "RAD_scale_1km",
+)
+
 styled_imshow_plot(
     proj_SWDOWN_54km,
     np.nanmin(SWDOWN_1km),
     np.nanmax(SWDOWN_1km),
     "YlOrRd",
-    "SWDOWN [W/m²]",
+    r"S$_\downarrow$ [W m$^{-2}$]",
     "SWDOWN_54km",
 )
+
 styled_imshow_plot(
-    proj_RAD_scale_54km,
-    np.nanmin(RAD_scale_1km),
-    np.nanmax(RAD_scale_1km),
+    SWDOWN_1km,
+    np.nanmin(SWDOWN_1km),
+    np.nanmax(SWDOWN_1km),
     "YlOrRd",
-    r"RAD [W/m$^2$]",
-    "RAD_scale_54km",
+    r"S$_\downarrow$ [W m$^{-2}$]",
+    "SWDOWN_1km",
+)
+
+styled_imshow_plot(
+    dSWDOWN,
+    np.nanmin(dSWDOWN),
+    np.nanmax(dSWDOWN),
+    "RdBu",
+    r"$\Delta_\text{res}$ S$_\downarrow$ [W m$^{-2}$]",
+    "SWDOWN_54-1km",
+)
+
+styled_imshow_plot(
+    dGPP_calc,
+    -15,
+    15,
+    "PiYG",
+    r"$\Delta_{\partial \text{T}}$GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
+    "dGPP_model_02",
 )
 # GPP calc again (duplicated in earlier batch, but now renamed to not overwrite)
 
@@ -400,39 +443,10 @@ styled_imshow_plot(
     -2,
     2,
     "PiYG",
-    r"$\frac{\partial GPP}{\partial T}$ ([μmol/m²/s/°C]",
+    r"$\frac{\partial \text{GPP}}{\partial \text{T}}$ ([$\mu$mol m$^{-2}$ s$^{-1}$ °C$^{-1}$]",
     "dGPPdT_1km",
 )
 
-styled_imshow_plot(
-    RAD_scale_1km,
-    np.nanmin(RAD_scale_1km),
-    np.nanmax(RAD_scale_1km),
-    "YlOrRd",
-    r"RAD [W/m$^2$]",
-    "RAD_scale_1km",
-)
-
-
-styled_imshow_plot(
-    SWDOWN_1km,
-    np.nanmin(SWDOWN_1km),
-    np.nanmax(SWDOWN_1km),
-    "YlOrRd",
-    "SWDOWN [W/m²]",
-    "SWDOWN_1km",
-)
-
-styled_imshow_plot(
-    dSWDOWN,
-    np.nanmin(dSWDOWN),
-    np.nanmax(dSWDOWN),
-    "RdBu",
-    "ΔSWDOWN [W/m²]",
-    "SWDOWN_54-1km",
-)
-
-styled_imshow_plot(dT_model, -15, 15, "coolwarm_r", "ΔT [C]", "dT_model")
 
 # CLDFRC_max
 styled_imshow_plot(
@@ -458,15 +472,34 @@ styled_imshow_plot(proj_T2_54km, 0, 35, "coolwarm_r", "[°C]", "T2_54km")
 
 
 # GPP 1km
-styled_imshow_plot(GPP_1km * conv_factor, 0, 30, "PiYG", "GPP [μmol/m²/s]", "GPP_1km")
+styled_imshow_plot(
+    GPP_1km * conv_factor,
+    0,
+    30,
+    "PiYG",
+    r"GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "GPP_1km",
+)
 
 # GPP 54km (reprojected)
 styled_imshow_plot(
-    proj_GPP_54km * conv_factor, 0, 30, "PiYG", "GPP [μmol/m²/s]", "GPP_54"
+    proj_GPP_54km * conv_factor,
+    0,
+    30,
+    "PiYG",
+    r"GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "GPP_54",
 )
 
 # GPP model diff (54km - 1km)
-styled_imshow_plot(dGPP_real, -15, 15, "PiYG", "ΔGPP [μmol/m²/s]", "GPP_54-1km")
+styled_imshow_plot(
+    dGPP_real,
+    -15,
+    15,
+    "PiYG",
+    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "GPP_54-1km",
+)
 
 
 styled_imshow_plot(
@@ -474,22 +507,59 @@ styled_imshow_plot(
     -2,
     2,
     "PiYG",
-    "dGPP/dT ([μmol/m²/s/°C]",
+    r"dGPP/dT ([$\mu$ mol m$^{-2}$ s$^{-1}$ °C$^{-1}$]",
     "dGPPdT_54km",
 )
 
 # Temperature differences
-styled_imshow_plot(dT_calc, -15, 15, "coolwarm_r", "ΔT [C]", "dT_calc")
-styled_imshow_plot(dT_model, -15, 15, "coolwarm_r", "ΔT [C]", "dT_model")
-styled_imshow_plot(dT_model - dT_calc, -15, 15, "coolwarm_r", "ΔT [C]", "dT_model-calc")
+styled_imshow_plot(
+    dT_calc, -15, 15, "coolwarm_r", "$\Delta_\text{res}$T [C]", "dT_calc"
+)
+styled_imshow_plot(
+    dT_model, -15, 15, "coolwarm_r", "$\Delta_\text{res}$T [C]", "dT_model"
+)
+styled_imshow_plot(
+    dT_model - dT_calc,
+    -15,
+    15,
+    "coolwarm_r",
+    "$\Delta_\text{res}$T [C]",
+    "dT_model-calc",
+)
 
 # GPP differences
-styled_imshow_plot(dGPP_calc, -15, 15, "PiYG", "ΔGPP [μmol/m²/s]", "dGPP_calc")
-styled_imshow_plot(dGPP_model, -15, 15, "PiYG", "ΔGPP [μmol/m²/s]", "dGPP_model")
 styled_imshow_plot(
-    dGPP_model - dGPP_calc, -15, 15, "PiYG", "ΔGPP [μmol/m²/s]", "dGPP_model-calc"
+    dGPP_calc,
+    -15,
+    15,
+    "PiYG",
+    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "dGPP_calc",
+)
+styled_imshow_plot(
+    dGPP_model,
+    -15,
+    15,
+    "PiYG",
+    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "dGPP_model",
+)
+styled_imshow_plot(
+    dGPP_model - dGPP_calc,
+    -15,
+    15,
+    "PiYG",
+    r"$\Delta_\text{res}$GPP [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "dGPP_model-calc",
 )
 
 # RECO difference
-styled_imshow_plot(dRECO_model, -15, 15, "PiYG", "ΔRECO [μmol/m²/s]", "dRECO_model")
+styled_imshow_plot(
+    dRECO_model,
+    -15,
+    15,
+    "PiYG",
+    r"$\Delta_\text{res}$RECO [$\mu$ mol m$^{-2}$ s$^{-1}$]",
+    "dRECO_model",
+)
 print("Plots done.")

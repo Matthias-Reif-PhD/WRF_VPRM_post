@@ -113,7 +113,13 @@ csv_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots"
 base_dir_FLX = "/scratch/c7071034/DATA/Fluxnet2015/Alps"
 fluxtypes = ["T2_WRF", "NEE_WRF", "GPP_WRF", "RECO_WRF"]
-units = ["[°C]", "[μmol/m²/s]", "[μmol/m²/s]", "[μmol/m²/s]"]
+plot_labels = [r"T$_\text{2m}$", "NEE", "GPP", r"R$_\text{eco}$"]
+units = [
+    "[°C]",
+    r"[$\mu$mol m$^{-2}$ s$^{-1}$]",
+    r"[$\mu$mol m$^{-2}$ s$^{-1}$]",
+    r"[$\mu$mol m$^{-2}$ s$^{-1}$]",
+]
 res_dx = "1km"
 plot_CAMS = True  # True -> need to load all CAMS files
 # List all relevant CSV files
@@ -316,7 +322,7 @@ for location_ll in model_lat_lon:
 # Create plots for each location
 consolidated_metrics_all = pd.DataFrame()
 for location in locations:
-    for fluxtype, unit in zip(fluxtypes, units):
+    for fluxtype, unit, plot_label in zip(fluxtypes, units, plot_labels):
         consolidated_metrics_df = pd.DataFrame(
             index=["RMSE", "R2"],  # Metrics as rows
         )
@@ -325,6 +331,12 @@ for location in locations:
             f"ALPS_{fluxtype}": "dashdot",
             f"REF_{fluxtype}": "dashed",
         }
+        WRF_plot_labels = {
+            f"SITE_{fluxtype}": plot_label + " SITE",
+            f"ALPS_{fluxtype}": plot_label + " ALPS",
+            f"REF_{fluxtype}": plot_label + " REF",
+        }
+
         # for Pmodel:
         #         variables = {f"SITE_{fluxtype}": "solid",f"ALPS_{fluxtype}": "dashdot"  , f"REF_{fluxtype}": "dashed" ,  "ALPS_GPP_Pmodel" : "dotted", "ALPS_RECO_Migli" : "dotted", "ALPS_NEE_PMigli" : "dotted"}
 
@@ -466,6 +478,11 @@ for location in locations:
                         ] = value  # Assign metric value to the appropriate column
 
                     linestyle = variables[variable]
+                    par_plot_label = WRF_plot_labels[variable]
+                    # if part of variable e.g. REF_T2_WRF contains T2, then overwrite
+                    if "T2" in variable:
+                        par_plot_label = r"T$_\text{2m}$"
+                        linestyle = "solid"
                     color_i = resolution_colors[resolution]
                     if (
                         variable == "std_GPP_Pmodel"
@@ -480,10 +497,9 @@ for location in locations:
                     # print(f"diff_ght={diff_hgt} at location {location}")
 
                     plt.plot(
-                        hourly_avg,  # Skipping the first value as requested
-                        label=(
-                            f"{resolution}_{variable} RMSE={metrics['RMSE']:.2f} R2={metrics['R2']:.2f}"
-                        ),
+                        hourly_avg,
+                        # use an f-raw string (rf or fr) to combine f-string interpolation with raw behavior
+                        label=rf"WRF {par_plot_label} - RMSE={metrics['RMSE']:.2f} R2={metrics['R2']:.2f}",
                         linestyle=linestyle,
                         color=color_i,
                     )
@@ -532,34 +548,57 @@ for location in locations:
             if var_CAMS_plot == "t2m":
                 hourly_avg_CAMS = df_CAMS_hourly.interpolate(method="linear")
                 hourly_avg_CAMS = df_CAMS_hourly.groupby("hour")[var_CAMS_plot].mean()
+                r_text = r"T$_\text{2m}$"
                 plt.plot(
                     hourly_avg_CAMS,
-                    label=f"CAMS {var_CAMS_plot}  R2={metrics['R2']:.2f} ",
+                    label=rf"CAMS {r_text} - RMSE={metrics['RMSE']:.2f} R2={metrics['R2']:.2f} ",
                     color="orange",
                 )
             else:
                 hourly_avg_CAMS = df_CAMS_hourly.interpolate(method="linear")
                 hourly_avg_CAMS = df_CAMS_hourly.groupby("hour")[var_CAMS_plot].mean()
+                if var_CAMS_plot == "fco2gpp":
+                    r_text = "GPP"
+                elif var_CAMS_plot == "fco2rec":
+                    r_text = r"R$_\text{eco}$"
+                elif var_CAMS_plot == "fco2nee":
+                    r_text = "NEE"
                 plt.plot(
                     hourly_avg_CAMS,
-                    label=f"CAMS {var_CAMS_plot}",
+                    label=rf"CAMS {r_text} - RMSE={metrics['RMSE']:.2f} R2={metrics['R2']:.2f}",
                     color="orange",
                     linestyle="dashed",
                 )
+                # metrics for BFAS
+                cams_bfas = df_merged[var_CAMS_plot + "_bfas"]
+                evaluator_bfas = RegressionMetric(
+                    df_FLX_site[var_flx].tolist(),
+                    cams_bfas.tolist(),
+                )
+                metrics_bfas = evaluator_bfas.get_metrics_by_list_names(["RMSE", "R2"])
+
                 hourly_avg_CAMS_bfas = df_CAMS_hourly.groupby("hour")[
                     var_CAMS_plot + "_bfas"
                 ].mean()
                 plt.plot(
                     hourly_avg_CAMS_bfas,
-                    label=f"CAMS {var_CAMS_plot}_bfas corr. RMSE={metrics['RMSE']:.2f}  R2={metrics['R2']:.2f} ",
+                    label=rf"CAMS  {r_text} (BFAS corr.) - RMSE={metrics_bfas['RMSE']:.2f}  R2={metrics_bfas['R2']:.2f} ",
                     color="orange",
                 )
 
         df_FLX_site["hour"] = df_FLX_site.index.hour
         hourly_avg_FLX = df_FLX_site.groupby("hour")[var_flx].mean()
+        if var_flx == "TA_F":
+            r_text = r"T$_\text{2m}$"
+        elif var_flx == "GPP_NT_VUT_USTAR50":
+            r_text = "GPP"
+        elif var_flx == "RECO_NT_VUT_USTAR50":
+            r_text = r"R$_\text{eco}$"
+        elif var_flx == "NEE_VUT_USTAR50":
+            r_text = "NEE"
         plt.plot(
             hourly_avg_FLX,
-            label=f"FLUXNET {var_flx}",
+            label=rf"FLUXNET {r_text}",
             linestyle="solid",
             color="black",
         )
@@ -567,10 +606,12 @@ for location in locations:
         factor_fontsize = 1.8
         plt.xlabel("UTC [h]", fontsize=14 * factor_fontsize)
         if unit == "[°C]":
-            plt.ylabel(r"T$_{2m}$ [°C]", fontsize=14 * factor_fontsize)
+            plt.ylabel(rf"{r_text} [°C]", fontsize=14 * factor_fontsize)
         else:
             flux_label = fluxtype.split("_")[0]
-            plt.ylabel(f"{flux_label} [μmol/m²/s]", fontsize=14 * factor_fontsize)
+            plt.ylabel(
+                rf"{r_text} [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=14 * factor_fontsize
+            )
         plt.tick_params(labelsize=12 * factor_fontsize)
         plt.legend(
             loc="center",

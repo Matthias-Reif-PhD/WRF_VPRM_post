@@ -9,17 +9,13 @@ import matplotlib.lines as mlines
 
 outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 # Load datasets
-d1 = xr.open_dataset("/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km/wrfinput_d01")
+d1 = xr.open_dataset("/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km/wrfinput_d01")
 d2 = xr.open_dataset("/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km/wrfinput_d02")
 
 # Extract variables
 var1 = d1["HGT"].isel(Time=0)
 lat1 = d1["XLAT"].isel(Time=0)
 lon1 = d1["XLONG"].isel(Time=0)
-
-var2 = d2["HGT"].isel(Time=0)
-lat2 = d2["XLAT"].isel(Time=0)
-lon2 = d2["XLONG"].isel(Time=0)
 
 # Plot setup
 # fig, ax = plt.subplots(subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(10, 6))
@@ -50,39 +46,15 @@ gl.ylabel_style = {"size": 20}
 # Contour settings
 levels = list(range(0, 3000, 100)) + [4000]
 cf1 = ax.contourf(lon1, lat1, var1, levels=levels, cmap="terrain", extend="both")
-cf2 = ax.contourf(
-    lon2, lat2, var2, levels=levels, cmap="terrain", extend="both", alpha=0.7
-)
 
 # Add colorbar
-cb = plt.colorbar(cf1, ax=ax, orientation="vertical", pad=0.01, shrink=0.4)
-cb.set_label("[m]", fontsize=20)
-cb.ax.tick_params(labelsize=20)
-
-# Nested domain boundary
-ny2, nx2 = var2.shape
-xbox = [
-    lon2[0, 0],
-    lon2[0, nx2 - 1],
-    lon2[ny2 - 1, nx2 - 1],
-    lon2[ny2 - 1, 0],
-    lon2[0, 0],
-]
-ybox = [
-    lat2[0, 0],
-    lat2[0, nx2 - 1],
-    lat2[ny2 - 1, nx2 - 1],
-    lat2[ny2 - 1, 0],
-    lat2[0, 0],
-]
-ax.plot(xbox, ybox, color="black", linewidth=1.5, transform=ccrs.PlateCarree())
+# cb = plt.colorbar(cf1, ax=ax, orientation="vertical", pad=0.01, shrink=0.4)
+# cb.set_label("[m]", fontsize=20)
+# cb.ax.tick_params(labelsize=20)
 
 # Domain labels
 ax.text(
-    float(lon2[0, 0]) + 0.4, float(lat2[0, 0]) + 0.2, "d03", fontsize=20, weight="bold"
-)
-ax.text(
-    float(lon1[0, 0]) + 0.4, float(lat1[0, 0]) + 0.2, "d02", fontsize=20, weight="bold"
+    float(lon1[0, 0]) + 0.4, float(lat1[0, 0]) + 0.2, "d01", fontsize=20, weight="bold"
 )
 
 # Site info (filtered)
@@ -201,10 +173,10 @@ handles = [
     for col, lbl in zip(colors, pft_labels)
 ]
 
-# ax.legend(handles=handles, loc="upper left", fontsize=12, frameon=True)
+ax.legend(handles=handles, loc="upper left", fontsize=12, frameon=True)
 
 plt.tight_layout()
-plt.savefig(outfolder + "domains_topo_sites.pdf", bbox_inches="tight")
+plt.savefig(outfolder + "domains_topo_sites_d01.pdf", bbox_inches="tight")
 
 
 # site_types = [

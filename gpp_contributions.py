@@ -45,7 +45,7 @@ def plot_lin_pert_results(contribs_grid, residual, driver_names=None):
     n_drivers = contribs_grid.shape[0]
     ny, nx = contribs_grid.shape[1], contribs_grid.shape[2]
 
-    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+    fig, axes = plt.subplots(2, 4, figsize=(16, 5))
     axes = axes.flatten()
 
     # Plot each driver contribution
@@ -849,7 +849,14 @@ for dx in dx_all:
         )
         # Then alphas gives your sensitivities; contribs[0] is ΔGPP_Lambda, contribs[1] is ΔGPP_T, etc.; residual is the unexplained fraction.
         driver_names = ["dlambda", "dTscale", "dWscale", "dPscale", "dRAD", "dEVI"]
-        driver_names_plot = ["Δlambda", "ΔTscale", "ΔWscale", "ΔPscale", "ΔRAD", "ΔEVI"]
+        driver_names_plot = [
+            r"$\overline{Y_{\lambda}}$",
+            r"$\overline{Y_{\text{T}_\text{scale}}}$",
+            r"$\overline{Y_{\text{W}_\text{scale}}}$",
+            r"$\overline{Y_{\text{P}_\text{scale}}}$",
+            r"$\overline{Y_{\text{RAD}}}$",
+            r"$\overline{Y_{\text{EVI}}}$",
+        ]
 
         mean_contribs = np.nanmean(contribs, axis=(1, 2))  # shape (6,)
         mean_residual = np.nanmean(residual)
@@ -982,7 +989,7 @@ for dx in dx_all:
     )
 
     if save_plot2:
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(12, 4))
         ax.plot(
             lin_pert_mean_diffs_df_hour.index,
             lin_pert_mean_diffs_df_hour[driver_names],
@@ -996,17 +1003,19 @@ for dx in dx_all:
             color="k",
             label="Residual",
         )
-        ax.set_ylabel(r"contributions C$_i$ [μmol/m²/s]")
-        ax.set_xlabel("UTC [h]")
+        ax.set_ylabel(
+            r"contributions $\overline{Y_{x_i}}$ [μmol m$^{-2}$ s$^{-1}$]", fontsize=14
+        )
+        ax.set_xlabel("UTC [h]", fontsize=14)
         # set xlabels to 1-23h
         ax.set_xticks(np.arange(len(lin_pert_mean_diffs_df_hour.index)))
         ax.set_xticklabels(
             [f"{i}" for i in range(len(lin_pert_mean_diffs_df_hour.index))]
         )
         # ax.set_xticklabels(ax.get_xticklabels(), ha="right")
-        ax.legend(driver_names_plot + ["Residual"], loc="upper left")
+        ax.legend(driver_names_plot + ["Residual"], loc="upper left", fontsize=12)
         ax.grid(True)
-        ax.set_ylim(-1.2, 0.6)
+        # ax.set_ylim(-1.2, 0.6)
         plt.tight_layout()
         # plt.show()
 

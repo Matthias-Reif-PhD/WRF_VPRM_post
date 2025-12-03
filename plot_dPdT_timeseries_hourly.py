@@ -20,7 +20,7 @@ resolutions = ["54km", "9km"]
 variable_groups = {
     "dT": "ΔT [°C]",
     "dGPP": "ΔGPP [μmol/m²/s]",
-    "dRECO": "ΔRECO [μmol/m²/s]",
+    "dRECO": r"ΔR$_\text{eco}$ [μmol/m²/s]",
 }
 ###############################42
 if plot_cloudy_and_clear:
@@ -85,6 +85,11 @@ def plot_combined(df, df_ref, variable_groups):
         plt.figure(figsize=(10, 6))
         label_shown = set()
 
+        if var_prefix == "dGPP":
+            type_x = "GPP"
+        else:
+            type_x = r"R$_{eco}$"
+
         for res in resolutions:
             columns = [
                 col
@@ -104,18 +109,18 @@ def plot_combined(df, df_ref, variable_groups):
                 avg_values = [grouped.get_group(h).mean() for h in hours]
 
                 if "model" in column:
-                    type_key = f"{var_prefix} calc."
+                    type_key = r"$\Delta_{\partial\text{T}}$"
                     color = resolution_colors_light.get(res, "gray")
                     if var_prefix == "dT":
                         type_key = f"{var_prefix}"
                         color = resolution_colors.get(res, "gray")
                 elif "real" in column:
-                    type_key = f"{var_prefix}"
+                    type_key = r"$\Delta_\text{res}$"
                     color = resolution_colors.get(res, "gray")
                 else:
                     continue
 
-                label = f"{type_key} ({res})"
+                label = rf"{type_key}{type_x} ({res}, ALPS))"
                 show_label = label not in label_shown
 
                 plt.plot(
@@ -133,18 +138,18 @@ def plot_combined(df, df_ref, variable_groups):
                 avg_values = [grouped.get_group(h).mean() for h in hours]
 
                 if "model" in column:
-                    type_key = f"{var_prefix} calc."
+                    type_key = r"$\Delta_{\partial\text{T}}$"
                     color = resolution_colors_light.get(res, "gray")
                     if var_prefix == "dT":
                         type_key = f"{var_prefix}"
                         color = resolution_colors.get(res, "gray")
                 elif "real" in column:
-                    type_key = f"{var_prefix}"
+                    type_key = r"$\Delta_\text{res}$"
                     color = resolution_colors.get(res, "gray")
                 else:
                     continue
 
-                label = f"{type_key} ({res}, REF)"
+                label = rf"{type_key}{type_x} ({res}, REF))"
                 show_label = label not in label_shown
 
                 plt.plot(
@@ -157,10 +162,13 @@ def plot_combined(df, df_ref, variable_groups):
                 label_shown.add(label)
 
         plt.xticks(hours)
-        plt.xlabel("UTC [h]")
-        plt.ylabel(ylabel)
+        plt.xlabel("UTC [h]", fontsize=14)
+        plt.ylabel(ylabel, fontsize=14)
         plt.grid(True)
-        plt.legend()
+        if var_prefix:
+            plt.legend(loc="lower right", fontsize=12)
+        else:
+            plt.legend(fontsize=12)
         plt.tight_layout()
         if plot_cloudy_and_clear:
             sim_type = "all"

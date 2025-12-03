@@ -17,16 +17,22 @@ outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
 
 # --- Load vegetation fraction map ---
 ds = xr.open_dataset(os.path.join(base_mz, t_file_fra))
-veg_frac_map = ds["vegetation_fraction_map"].isel(
-    south_north=slice(1, -1), west_east=slice(1, -1)
-)
-lat = ds["lat"].isel(south_north=slice(1, -1), west_east=slice(1, -1)).values
-lon = ds["lon"].isel(south_north=slice(1, -1), west_east=slice(1, -1)).values
+veg_frac_map = ds["vegetation_fraction_map"]
+lat = ds["lat"].values
+lon = ds["lon"].values
 
 # --- Load d02 domain and restrict data to that extent ---
 d2 = xr.open_dataset("/scratch/c7071034/WPS/geo_em.d02.nc")
-lat2 = d2["XLAT_M"].isel(Time=0).values
-lon2 = d2["XLONG_M"].isel(Time=0).values
+lat2 = (
+    d2["XLAT_M"]
+    .isel(Time=0, south_north=slice(10, -10), west_east=slice(10, -10))
+    .values
+)
+lon2 = (
+    d2["XLONG_M"]
+    .isel(Time=0, south_north=slice(10, -10), west_east=slice(10, -10))
+    .values
+)
 
 lat2_min, lat2_max = lat2.min(), lat2.max()
 lon2_min, lon2_max = lon2.min(), lon2.max()
@@ -40,7 +46,7 @@ if len(y_idx) == 0 or len(x_idx) == 0:
 
 # Slice bounds
 ymin, ymax = y_idx.min(), y_idx.max() + 1
-xmin, xmax = x_idx.min(), x_idx.max() + 1
+xmin, xmax = x_idx.min() - 1, x_idx.max() + 1
 
 # Crop datasets
 veg_frac_map = veg_frac_map.isel(
@@ -61,9 +67,9 @@ colors = [
     "#808080",
 ]
 pft_labels = [
-    "Evergreen",
-    "Deciduous",
-    "Mixed Forest",
+    "Evergreen forest",
+    "Deciduous forest",
+    "Mixed forest",
     "Shrubland",
     "Savannas",
     "Cropland",
@@ -81,7 +87,7 @@ dominant_type = veg_frac_map.argmax(dim="vprm_classes") + 1
 fig = plt.figure(figsize=(12, 15))
 ax = plt.axes(projection=ccrs.PlateCarree())
 ax.set_extent(
-    [float(lon.min()), float(lon.max()), float(lat.min()), float(lat.max())],
+    [float(lon2.min()), float(lon2.max()), float(lat2.min()), float(lat2.max())],
     crs=ccrs.PlateCarree(),
 )
 
@@ -109,8 +115,8 @@ gl = ax.gridlines(
 )
 gl.top_labels = False
 gl.right_labels = False
-gl.xlabel_style = {"size": 20}
-gl.ylabel_style = {"size": 20}
+gl.xlabel_style = {"size": 18}
+gl.ylabel_style = {"size": 18}
 
 # --- Overlay: fractional PFT pies via inset_axes ---
 step = 1
@@ -142,14 +148,14 @@ for i in range(1, lat.shape[0] - 1, step):
 #    "Fractional PFT composition with dominant PFT background (cut to d02)", fontsize=16
 # )
 
-patches = [Patch(color=colors[k], label=lab) for k, lab in enumerate(pft_labels)]
-# ax.legend(handles=patches, loc="upper right", fontsize=9, title="PFT")
+# patches = [Patch(color=colors[k], label=lab) for k, lab in enumerate(pft_labels)]
+# ax.legend(handles=patches, loc="upper right", fontsize=16)
 
-cbar = plt.colorbar(
-    im, ax=ax, ticks=np.arange(1.5, 9.5), fraction=0.046, pad=0.04, shrink=0.3
-)
-cbar.ax.set_yticklabels(pft_labels)
-cbar.ax.tick_params(labelsize=20)
+# cbar = plt.colorbar(
+#     im, ax=ax, ticks=np.arange(1.5, 9.5), fraction=0.046, pad=0.04, shrink=0.3
+# )
+# cbar.ax.set_yticklabels(pft_labels)
+# cbar.ax.tick_params(labelsize=14)
 
 plt.tight_layout()
 # plt.show()
