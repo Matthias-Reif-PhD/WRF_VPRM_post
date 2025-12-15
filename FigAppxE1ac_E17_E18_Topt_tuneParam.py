@@ -59,6 +59,7 @@ def find_minimum_of_cubic_poly(coeffs, x_range):
 # Define paths and parameters
 base_path = "/scratch/c7071034/DATA/Fluxnet2015/Alps/"
 plot_path = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
+font_size = 20
 site_info = pd.read_csv(
     "/scratch/c7071034/DATA/Fluxnet2015/Alps/site_info_all_FLUXNET2015.csv"
 )
@@ -279,6 +280,7 @@ for folder in os.listdir(base_path):
 
             # Visualization
             if plot_data:
+                plt.figure(figsize=(8, 8))
                 plt.scatter(
                     mean_values.index,
                     mean_values["NEE_VUT_REF"],
@@ -299,10 +301,16 @@ for folder in os.listdir(base_path):
                         linestyle="--",
                         label=f"Topt = {Topt:.2f}",
                     )
-                plt.xlabel(r"T$_\text{2m}$ [°C]")
-                plt.ylabel(r"NEE [$\mu$mol m$^{-2}$ s$^{-1}$]")
-                plt.legend()
-                # plt.title(f'Optimal Temperature (Topt) for {site_name} in {year}')
+                plt.xlabel(r"T$_\text{2m}$ [°C]", fontsize=font_size)
+                plt.ylabel(r"NEE [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=font_size)
+                plt.xticks(fontsize=font_size - 2)
+                plt.yticks(fontsize=font_size - 2)
+                plt.legend(
+                    fontsize=font_size,
+                    frameon=True,
+                    framealpha=0.4,
+                )
+                plt.grid(True)
                 plt.savefig(
                     os.path.join(
                         plot_path,
@@ -410,7 +418,7 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
 
         df_parameters_nn = df_parameters.copy()
         df_parameters_nn = df_parameters_nn.dropna()
-        font_size = 12
+
         custom_colors = [
             "#006400",
             "#228B22",
@@ -446,8 +454,7 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
             df_parameters.reset_index(drop=True, inplace=True)
             str_R2_lt_zero = "_R2_lt_zero"
 
-        font_size = 12
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(8, 8))
         plt.scatter(
             df_parameters["T_mean"],
             df_parameters["Topt"],
@@ -465,8 +472,8 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
             color="red",
             label=f"y = {coefficients[0]:.2f}x + {coefficients[1]:.2f}",
         )
-        plt.xlabel(r"$T_{\mathrm{mean}}$ [°C]", fontsize=font_size + 2)
-        plt.ylabel(r"$T_{\mathrm{opt}}$ [°C]", fontsize=font_size + 2)
+        plt.xlabel(r"$T_{\mathrm{mean}}$ [°C]", fontsize=font_size)
+        plt.ylabel(r"$T_{\mathrm{opt}}$ [°C]", fontsize=font_size)
         plt.xticks(fontsize=font_size)
         plt.yticks(fontsize=font_size)
         plt.grid(True)
@@ -476,7 +483,11 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
                 [], [], c=color, label=pft
             )  # Create an empty scatter plot for each PFT label
 
-        plt.legend(fontsize=font_size)
+        plt.legend(
+            fontsize=font_size,
+            frameon=True,
+            framealpha=0.4,
+        )
         plt.tight_layout()
         plt.savefig(
             plot_path
@@ -491,7 +502,7 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
         )
         plt.close()
 
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(8, 8))
         plt.scatter(
             df_parameters["T_max"].dropna(),
             df_parameters["Topt"].dropna(),
@@ -508,8 +519,8 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
         )
         equation_regression = f"y = {coefficients[0]:.2f}x + {coefficients[1]:.2f}"
         equation_normal = "y = x"
-        plt.xlabel(r"$T_{\mathrm{max}}$", fontsize=font_size + 2)
-        plt.ylabel(r"$T_{\mathrm{opt}}$", fontsize=font_size + 2)
+        plt.xlabel(r"$T_{\mathrm{max}}$", fontsize=font_size)
+        plt.ylabel(r"$T_{\mathrm{opt}}$", fontsize=font_size)
         plt.xticks(fontsize=font_size)
         plt.yticks(fontsize=font_size)
 
@@ -520,7 +531,11 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
                 [], [], c=color, label=pft
             )  # Create an empty scatter plot for each PFT label
 
-        plt.legend(fontsize=font_size)
+        plt.legend(
+            fontsize=font_size,
+            frameon=True,
+            framealpha=0.4,
+        )
 
         plt.tight_layout()
         plt.savefig(
@@ -573,7 +588,7 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
                 "beta",
             ]
             labels_plot = {
-                "RAD0": r"RAD$_0$ $[\frac{\mu \text{mol m}^{\text{-2}} \text{s}^{-1}}{(\text{W m}^{\text{-2}})^\text{2}}]$",
+                "RAD0": r"RAD$_0$ $[\mu \text{mol m}^{\text{-2}} \text{s}^{-1}]$",
                 "lambd": r"$\lambda$ [-]",
                 "alpha": r"$\alpha$ $[\frac{\mu \text{mol m}^{\text{-2}} \text{s}^{-1}}{K}]$",
                 "beta": r"$\beta$ $[\mu \text{mol m}^{\text{-2}} \text{s}^{-1}]$",
@@ -606,13 +621,10 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
 
         if CO2_parametrization == "new":
             fig, axes = plt.subplots(nrows=4, ncols=3, figsize=(15, 20))
-            font_size = 12
         elif CO2_parametrization == "old":
             fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 15))
-            font_size = 14
         elif CO2_parametrization == "migli":
             fig, axes = plt.subplots(nrows=7, ncols=1, figsize=(10, 35))
-            font_size = 14
 
         axes = axes.flatten()
         for i, parameter in enumerate(parameters_to_plot):
@@ -629,8 +641,8 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
                 ax=axes[i],
             )
             # axes[i].set_title(f'{parameter} by PFT',fontsize=font_size+2, weight='bold')
-            axes[i].set_xlabel("PFT", fontsize=font_size + 2)
-            axes[i].set_ylabel(label, fontsize=font_size + 2)
+            axes[i].set_xlabel("PFT", fontsize=font_size)
+            axes[i].set_ylabel(label, fontsize=font_size - 2)
             axes[i].tick_params(axis="x", rotation=45)
             axes[i].tick_params(axis="both", which="major", labelsize=font_size)
 
@@ -666,10 +678,8 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
             fig, axes = plt.subplots(nrows=4, ncols=3, figsize=(15, 20))
         elif CO2_parametrization == "old":
             fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 15))
-            font_size = 14
         elif CO2_parametrization == "migli":
             fig, axes = plt.subplots(nrows=7, ncols=1, figsize=(10, 35))
-            font_size = 14
         axes = axes.flatten()
 
         for i, parameter in enumerate(parameters_to_plot):
@@ -681,24 +691,25 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
                 ax=axes[i],
                 palette=site_colors,
             )
-            axes[i].set_xlabel("site_ID", fontsize=font_size + 2)
-            axes[i].set_ylabel(label, fontsize=font_size + 2)
-            axes[i].tick_params(axis="x", rotation=90)
+            axes[i].set_xlabel("site_ID", fontsize=font_size)
+            axes[i].set_ylabel(label, fontsize=font_size - 2)
+            axes[i].tick_params(axis="x", rotation=45)
             axes[i].tick_params(axis="both", which="major", labelsize=font_size)
             if CO2_parametrization == "new":
-                axes[i].tick_params(axis="x", which="major", labelsize=font_size - 5)
+                axes[i].tick_params(axis="x", which="major", labelsize=font_size)
 
         # Create legend handles
         handles = []
         for pft, color in pft_colors.items():
             handles.append(plt.scatter([], [], c=color, label=pft))
 
-        plt.legend(
+        axes[0].legend(
             handles=handles,
-            bbox_to_anchor=(0.5, -0.32),
-            loc="upper center",
-            ncol=len(pft_colors) // 2,
-            fontsize=font_size,
+            loc="upper right",
+            ncol=len(pft_colors),
+            fontsize=font_size - 2,
+            frameon=True,
+            framealpha=0.4,
         )
 
         plt.tight_layout()
@@ -809,7 +820,6 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
             "RMSE_NEE",
             "MAE_NEE",
         ]
-        font_size = font_size - 2
         grouped = df_parameters.groupby("PFT")
         dfs_to_concat = []
         for parameter in parameters_to_plot:
@@ -864,10 +874,9 @@ for CO2_parametrization in ["old"]:  # "migli","old","new"
                 alpha=0.5,
                 ax=axes[i],
             )
-            # axes[i].set_title(f'{parameter} by PFT', fontsize=font_size+2, weight='bold')
-            axes[i].set_xlabel("PFT", fontsize=font_size + 2)
-            axes[i].set_ylabel(label, fontsize=font_size + 2)
-            axes[i].tick_params(axis="x", rotation=90)
+            axes[i].set_xlabel("PFT", fontsize=font_size)
+            axes[i].set_ylabel(label, fontsize=font_size - 2)
+            axes[i].tick_params(axis="x", rotation=45)
             axes[i].tick_params(axis="both", which="major", labelsize=font_size)
             if "R2" in parameter:
                 axes[i].set_ylim(0, 1)

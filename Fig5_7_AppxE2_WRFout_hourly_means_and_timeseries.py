@@ -138,9 +138,10 @@ def plot_timeseries_differences(
     plt.xticks(xticks, xticklabels, ha="left")
     plt.xlabel("Date", fontsize=20)
     plt.ylabel(r"$\Delta_\text{res}$" + f"{var_labels[column]} {unit}", fontsize=20)
-    plt.tick_params(labelsize=20, labelrotation=90)
+    plt.tick_params(axis="x", labelsize=16, labelrotation=90)
+    plt.tick_params(axis="y", labelsize=18)
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend(fontsize=16)
+    plt.legend(fontsize=20)
     plt.tight_layout()
 
     plt.savefig(
@@ -229,9 +230,10 @@ def plot_timeseries_by_resolution(
     plt.xticks(xticks, xticklabels, ha="left")
     plt.xlabel("Date", fontsize=20)
     plt.ylabel(f"{var_labels[column]} {unit}", fontsize=20)
-    plt.tick_params(labelsize=20, labelrotation=90)
+    plt.tick_params(axis="x", labelsize=16, labelrotation=90)
+    plt.tick_params(axis="y", labelsize=18)
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend(fontsize=16)
+    plt.legend(fontsize=20)
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
@@ -280,13 +282,13 @@ def plot_hourly_averages(
                     color=resolution_colors[res],
                 )
 
-    plt.xlabel("UTC [h]", fontsize=24)
-    plt.ylabel(f"{var_labels[column]} {unit}", fontsize=24)
+    plt.xlabel("UTC [h]", fontsize=30)
+    plt.ylabel(f"{var_labels[column]} {unit}", fontsize=30)
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.xticks([0, 6, 12, 18, 24])
-    plt.tick_params(axis="x", labelsize=24)
-    plt.tick_params(axis="y", labelsize=24)
-    plt.legend(fontsize=16)
+    plt.tick_params(axis="x", labelsize=30)
+    plt.tick_params(axis="y", labelsize=30)
+    plt.legend(fontsize=24, frameon=True, framealpha=0.4)
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_hourly_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",
@@ -335,13 +337,13 @@ def plot_hourly_differences(
                 color=resolution_colors[res],
             )
 
-    plt.xlabel("UTC [h]", fontsize=24)
-    plt.ylabel(r"$\Delta_\text{res}$" + f"{var_labels[column]} {unit}", fontsize=24)
+    plt.xlabel("UTC [h]", fontsize=30)
+    plt.ylabel(r"$\Delta_\text{res}$" + f"{var_labels[column]} {unit}", fontsize=30)
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend(fontsize=16)
+    plt.legend(fontsize=24, frameon=True, framealpha=0.4)
     plt.xticks([0, 6, 12, 18, 24])
-    plt.tick_params(axis="x", labelsize=24)
-    plt.tick_params(axis="y", labelsize=24)
+    plt.tick_params(axis="x", labelsize=30)
+    plt.tick_params(axis="y", labelsize=30)
     plt.tight_layout()
     plt.savefig(
         f"{outfolder}timeseries_hourly_diff_of_54km_{column}_domain_averaged_std_topo_{STD_TOPO}{sim_type}_{start_date}_{end_date}.pdf",

@@ -19,7 +19,7 @@ interp_method = "nearest"  # 'linear', 'nearest', 'cubic'
 temp_gradient = -6.5  # K/km
 STD_TOPO = 200
 # Set time
-dateime = "2012-07-27_12"
+dateime = "2012-07-27_12"  # second plot time "2012-07-27_05"
 subfolder = ""  # "" or "_cloudy"
 wrfinput_path_1km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{subfolder}/wrfout_d02_{dateime}:00:00"
 wrfinput_path_54km = f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS{dx}{subfolder}/wrfout_d01_{dateime}:00:00"
@@ -340,19 +340,19 @@ def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
     cbar = plt.colorbar(
         im, ax=ax, orientation="vertical", shrink=0.3, fraction=0.046, pad=0.06
     )
-    cbar.ax.tick_params(labelsize=20)
-    cbar.set_label(label, fontsize=20)
+    cbar.ax.tick_params(labelsize=30)
+    cbar.set_label(label, fontsize=30)
 
     gl = ax.gridlines(
         draw_labels=True, linewidth=1.5, color="black", alpha=0.2, linestyle="--"
     )
     gl.top_labels = False
     gl.right_labels = False
-    gl.xlabel_style = {"size": 20}
-    gl.ylabel_style = {"size": 20}
+    gl.xlabel_style = {"size": 30}
+    gl.ylabel_style = {"size": 30}
 
-    ax.set_xlabel("Longitude", fontsize=20)
-    ax.set_ylabel("Latitude", fontsize=20)
+    ax.set_xlabel("Longitude", fontsize=30)
+    ax.set_ylabel("Latitude", fontsize=30)
 
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
@@ -516,12 +516,6 @@ styled_imshow_plot(
 )
 
 # Temperature differences
-styled_imshow_plot(
-    dT_calc, -15, 15, "coolwarm_r", "$\Delta_\text{res}$T [C]", "dT_calc"
-)
-styled_imshow_plot(
-    dT_model, -15, 15, "coolwarm_r", "$\Delta_\text{res}$T [C]", "dT_model"
-)
 styled_imshow_plot(
     dT_model - dT_calc,
     -15,

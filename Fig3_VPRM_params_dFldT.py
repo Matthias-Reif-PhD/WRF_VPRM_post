@@ -143,11 +143,11 @@ def plot_gpp_and_reco(
         plt.plot(T, RECO, "--", color=color)
         plt.axvline(Topt, color=color, linestyle=":", linewidth=1.5)
 
-    plt.xlabel(r"T$_\mathrm{2m}$ [°C]", fontsize=14)
-    plt.ylabel(r"GPP and R$_{\mathrm{eco}}$ [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=14)
+    plt.xlabel(r"T$_\mathrm{2m}$ [°C]", fontsize=20)
+    plt.ylabel(r"GPP and R$_{\mathrm{eco}}$ [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=20)
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.tick_params(labelsize=12)
-    plt.legend(ncol=1, fontsize=12)
+    plt.tick_params(labelsize=20)
+    plt.legend(ncol=1, fontsize=20)
     plt.tight_layout()
     plt.savefig(outpath, bbox_inches="tight")
     plt.close()
@@ -173,12 +173,12 @@ def plot_dGPP_dT_and_dRECO_dT(
         plt.plot(T_trim, dGPPdT[5:], label=pft, color=color)
         plt.plot(T_trim, np.full_like(T_trim, alpha), linestyle="--", color=color)
 
-    plt.xlabel(r"T$_\mathrm{2m}$ [°C]", fontsize=14)
+    plt.xlabel(r"T$_\mathrm{2m}$ [°C]", fontsize=20)
     plt.ylabel(
         r"$\partial$GPP/$\partial$T$\,$ and $\partial$R$_{\mathrm{eco}}$/$\partial$T$\,$ [$\mu$mol m$^{-2}$ s$^{-1}$ $^\circ$C$^{-1}$]",
-        fontsize=12,
+        fontsize=20,
     )
-    plt.tick_params(labelsize=12)
+    plt.tick_params(labelsize=20)
     plt.grid(True, linestyle="--", alpha=0.5)
     plt.tight_layout()
     plt.savefig(outpath, bbox_inches="tight")
@@ -187,16 +187,19 @@ def plot_dGPP_dT_and_dRECO_dT(
 
 def main() -> None:
     """Run both figures and save outputs."""
+    OUTFOLDER = "/home/c707/c7071034/Github/WRF_VPRM_post/plots/"
     print(f"W-scale = {W_SCALE:.3f}")
     try:
-        plot_gpp_and_reco(pft_parameters, outpath="VPRM_pft_GPP_RECO.pdf")
+        plot_gpp_and_reco(pft_parameters, outpath=f"{OUTFOLDER}/VPRM_pft_GPP_RECO.pdf")
         print("Saved VPRM_pft_GPP_RECO.pdf")
     except Exception:
         print("Error while creating VPRM_pft_GPP_RECO.pdf:")
         traceback.print_exc()
 
     try:
-        plot_dGPP_dT_and_dRECO_dT(pft_parameters, outpath="VPRM_pft_dGPPdT.pdf")
+        plot_dGPP_dT_and_dRECO_dT(
+            pft_parameters, outpath=f"{OUTFOLDER}/VPRM_pft_dGPPdT.pdf"
+        )
         print("Saved VPRM_pft_dGPPdT.pdf")
     except Exception:
         print("Error while creating VPRM_pft_dGPPdT.pdf:")

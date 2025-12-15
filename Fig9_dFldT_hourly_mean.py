@@ -122,7 +122,7 @@ def plot_combined(df, df_ref, variable_groups):
                 else:
                     continue
 
-                label = rf"{type_key}{type_x} ({res}, ALPS))"
+                label = rf"{type_key}{type_x} ({res}, ALPS)"
                 show_label = label not in label_shown
 
                 plt.plot(
@@ -151,7 +151,7 @@ def plot_combined(df, df_ref, variable_groups):
                 else:
                     continue
 
-                label = rf"{type_key}{type_x} ({res}, REF))"
+                label = rf"{type_key}{type_x} ({res}, REF)"
                 show_label = label not in label_shown
 
                 plt.plot(
@@ -164,13 +164,14 @@ def plot_combined(df, df_ref, variable_groups):
                 label_shown.add(label)
 
         plt.xticks(hours)
-        plt.xlabel("UTC [h]", fontsize=14)
-        plt.ylabel(ylabel, fontsize=14)
+        plt.xlabel("UTC [h]", fontsize=20)
+        plt.ylabel(ylabel, fontsize=20)
+        plt.tick_params(labelsize=16)
         plt.grid(True)
         if var_prefix:
-            plt.legend(loc="lower right", fontsize=12)
+            plt.legend(loc="lower right", fontsize=20, frameon=True, framealpha=0.4)
         else:
-            plt.legend(fontsize=12)
+            plt.legend(fontsize=20, frameon=True, framealpha=0.4)
         plt.tight_layout()
         if plot_cloudy_and_clear:
             sim_type = "all"
@@ -185,7 +186,7 @@ def plot_gpp_percent_explained(
     df, df_ref, variable_groups, resolutions, outfolder, STD_TOPO, start_date, end_date
 ):
     for var_prefix, ylabel in variable_groups.items():
-        plt.figure(figsize=(12, 6))
+        plt.figure(figsize=(10, 6))
         width = 0.4
         hours = np.arange(24)
 
@@ -250,10 +251,11 @@ def plot_gpp_percent_explained(
 
         plt.axhline(100, color="black", linestyle="--", linewidth=1)
         plt.xticks(hours)
+        plt.tick_params(labelsize=16)
         plt.xlabel("UTC [h]")
         plt.ylabel(f"{ylabel} explained by model [%]")
         plt.ylim(-100, 100)
-        plt.legend()
+        plt.legend(frameon=True, framealpha=0.4)
         plt.grid(True)
         plt.tight_layout()
         if plot_cloudy_and_clear:

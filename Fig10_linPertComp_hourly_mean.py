@@ -25,7 +25,7 @@ start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-31 00:00:00"
 wrf_basepath = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS"  # without resolution suffix
 dx_all = ["_54km", "_9km"]  # "_54km",
-sim_type = "_cloudy"  # "", "_cloudy"
+sim_type = ""  # "", "_cloudy"
 plots_folder = (
     f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/components{sim_type}_L2_"
 )
@@ -175,7 +175,7 @@ def styled_imshow_plot_d01(data, vmin, vmax, cmap, label, filename):
 
     ax.set_xlabel("Longitude", fontsize=20)
     ax.set_ylabel("Latitude", fontsize=20)
-
+    plt.tick_params(labelsize=18)
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAKES, linewidth=0.5)
@@ -218,7 +218,7 @@ def styled_imshow_plot(data, vmin, vmax, cmap, label, filename):
 
     ax.set_xlabel("Longitude", fontsize=20)
     ax.set_ylabel("Latitude", fontsize=20)
-
+    plt.tick_params(labelsize=18)
     ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, linewidth=0.5)
     ax.add_feature(cfeature.LAKES, linewidth=0.5)
@@ -994,7 +994,7 @@ for dx in dx_all:
     )
 
     if save_plot2:
-        fig, ax = plt.subplots(figsize=(12, 4))
+        fig, ax = plt.subplots(figsize=(12, 5))
         ax.plot(
             lin_pert_mean_diffs_df_hour.index,
             lin_pert_mean_diffs_df_hour[driver_names],
@@ -1009,16 +1009,22 @@ for dx in dx_all:
             label="Residual",
         )
         ax.set_ylabel(
-            r"contributions $\overline{Y_{x_i}}$ [μmol m$^{-2}$ s$^{-1}$]", fontsize=14
+            r"contributions $\overline{Y_{x_i}}$ [μmol m$^{-2}$ s$^{-1}$]", fontsize=20
         )
-        ax.set_xlabel("UTC [h]", fontsize=14)
+        ax.set_xlabel("UTC [h]", fontsize=20)
         # set xlabels to 1-23h
         ax.set_xticks(np.arange(len(lin_pert_mean_diffs_df_hour.index)))
         ax.set_xticklabels(
             [f"{i}" for i in range(len(lin_pert_mean_diffs_df_hour.index))]
         )
-        # ax.set_xticklabels(ax.get_xticklabels(), ha="right")
-        ax.legend(driver_names_plot + ["Residual"], loc="upper left", fontsize=12)
+        plt.tick_params(labelsize=18)
+        ax.legend(
+            driver_names_plot + ["Residual"],
+            loc="upper left",
+            fontsize=20,
+            frameon=True,
+            framealpha=0.4,
+        )
         ax.grid(True)
         # ax.set_ylim(-1.2, 0.6)
         plt.tight_layout()

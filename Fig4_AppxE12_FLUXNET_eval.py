@@ -409,20 +409,17 @@ def process_location(
             color="black",
         )
 
-        factor_fontsize = 1.8
-        plt.xlabel("UTC [h]", fontsize=14 * factor_fontsize)
+        plt.xlabel("UTC [h]", fontsize=20)
         if unit == "[°C]":
-            plt.ylabel(rf"{r_text} [°C]", fontsize=14 * factor_fontsize)
+            plt.ylabel(rf"{r_text} [°C]", fontsize=20)
         else:
-            plt.ylabel(
-                rf"{r_text} [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=14 * factor_fontsize
-            )
-        plt.tick_params(labelsize=12 * factor_fontsize)
+            plt.ylabel(rf"{r_text} [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=20)
+        plt.tick_params(labelsize=20)
         plt.legend(
             loc="center",
             bbox_to_anchor=(0.5, -0.25),
             ncol=2,
-            fontsize=8 * factor_fontsize,
+            fontsize=19,
         )
         plt.xticks([0, 6, 12, 18, 24])
         plt.grid()

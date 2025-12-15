@@ -114,8 +114,8 @@ ref_sim = "_REF"  # "_REF" to use also REF simulation or "" for only tuned value
 subdaily = ""  # "_subdailyC3" or ""
 coarse_domains = ["54km", "9km"]  # , "27km", "9km", "3km"
 subfolder = ""  # "" or "_cloudy"
-cloudy_and_clear = True  # if False only clearsky, if True cloudy and clear
-cloudy_and_clear_str = "_cloudy_and_clear"
+cloudy_and_clear = False  # if False they are run reperately
+filename_str = subfolder if not cloudy_and_clear else "_clearsky_and_cloudy"
 subfolders = [subfolder] if not cloudy_and_clear else ["", "_cloudy"]
 wrf_files = "wrfout_d01*"
 wrf_files_1km = "wrfout_d02*"
@@ -599,19 +599,19 @@ for coarse_domain in coarse_domains:
 
             if plot_coeff:
                 ax = df_coeff.plot(linestyle="-", figsize=(10, 6), grid=True)
-                ax.set_ylim(-1.5, 1.5)
+                ax.set_ylim(-2, 2)
                 ax.set_xlim(T_ref_min, T_ref_max)
                 ax.set_xlabel(r"$T_{\mathrm{ref}}$ °C", fontsize=20)
                 ax.set_ylabel("[μmol m² s⁻¹ °C⁻¹]", fontsize=20)
 
                 ax.tick_params(labelsize=20)
                 ax.grid(True, linestyle="--", alpha=0.5)
-                ax.legend(fontsize=16)
+                ax.legend(fontsize=16, frameon=True, framealpha=0.4)
 
                 # ax.set_title(f"Coefficient Values for NEE, GPP, and RECO")
                 figname = (
                     outfolder
-                    + f"WRF_Tref_coefficients{ref_sim}{cloudy_and_clear_str}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.pdf"
+                    + f"WRF_Tref_coefficients{ref_sim}{filename_str}_{coarse_domain}_{STD_TOPO_flag}_STD_{STD_TOPO}_{hour_start}-{hour_end}h_till_{end_date}.pdf"
                 )
                 plt.savefig(figname, bbox_inches="tight")
                 plt.close()
