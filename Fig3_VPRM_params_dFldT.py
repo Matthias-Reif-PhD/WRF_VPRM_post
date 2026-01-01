@@ -139,9 +139,9 @@ def plot_gpp_and_reco(
         GPP = GPP_from_Tscale(Tscale, lam, PAR_0)
         RECO = RECO_from_T(T, alpha, beta)
 
-        plt.plot(T, GPP, label=pft, color=color)
-        plt.plot(T, RECO, "--", color=color)
-        plt.axvline(Topt, color=color, linestyle=":", linewidth=1.5)
+        plt.plot(T, GPP, label=pft, color=color, linewidth=3)
+        plt.plot(T, RECO, "--", color=color, linewidth=3)
+        plt.axvline(Topt, color=color, linestyle=":", linewidth=3)
 
     plt.xlabel(r"T$_\mathrm{2m}$ [°C]", fontsize=20)
     plt.ylabel(r"GPP and R$_{\mathrm{eco}}$ [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=20)
@@ -170,8 +170,15 @@ def plot_dGPP_dT_and_dRECO_dT(
         dGPPdT = GPP_from_Tscale(dTscale, lam, PAR_0)
 
         # dRECO/dT is simply alpha (constant). For comparability with discrete plotting, we plot alpha as dashed.
-        plt.plot(T_trim, dGPPdT[5:], label=pft, color=color)
-        plt.plot(T_trim, np.full_like(T_trim, alpha), linestyle="--", color=color)
+        plt.plot(T_trim, dGPPdT[5:], label=pft, color=color, linewidth=3)
+        plt.plot(
+            T_trim,
+            np.full_like(T_trim, alpha, dtype=float),
+            linestyle="--",
+            color=color,
+            linewidth=3,
+        )
+        plt.axvline(Topt, color=color, linestyle=":", linewidth=3)
 
     plt.xlabel(r"T$_\mathrm{2m}$ [°C]", fontsize=20)
     plt.ylabel(

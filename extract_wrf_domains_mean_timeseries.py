@@ -706,14 +706,14 @@ def main():
     else:  # to run locally
         start_date = "2012-01-01 00:00:00"
         end_date = "2012-12-31 00:00:00"
-        sim_type = "_cloudy"  # "" or "_cloudy" or "_parm_err"
+        sim_type = ""  # "" or "_cloudy" or "_parm_err"
 
     wrf_paths = [
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{sim_type}",
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km{sim_type}",
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km{sim_type}",
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km{sim_type}",
-        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km{sim_type}",  # all resolutions have to be used, otherwise code needs to be changed
     ]
 
     exctract_wrf_domains_mean_timeseries(wrf_paths, start_date, end_date, sim_type)

@@ -289,9 +289,9 @@ def main():
     if len(sys.argv) > 1:  # to run on cluster
         parser = argparse.ArgumentParser(description="Description of your script")
         parser.add_argument(
-            "-s", "--start", type=str, help="Format: 2012-07-01 01:00:00"
+            "-s", "--start", type=str, help="Format: 2012-01-01 00:00:00"
         )
-        parser.add_argument("-e", "--end", type=str, help="Format: 2012-07-01 01:00:00")
+        parser.add_argument("-e", "--end", type=str, help="Format: 2012-12-31 00:00:00")
         parser.add_argument(
             "-t",
             "--type",
@@ -309,10 +309,8 @@ def main():
         sim_type = "_cloudy"  # "", "_parm_err" or "_cloudy"
 
     wrf_paths = [
-        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{sim_type}",
-        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km{sim_type}",
+        f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km{sim_type}",  # 1km resolution hat to be included, as dPdT is calculated from 1km to a coarse resolution
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km{sim_type}",
-        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km{sim_type}",
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km{sim_type}",
     ]
 

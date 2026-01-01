@@ -156,7 +156,7 @@ def extract_datetime_from_filename(filename):
     return datetime.strptime(date_str, "%Y-%m-%d_%H:%M:%S")
 
 
-def extract_timeseries(wrf_path, start_date, end_date, res, sim_type):
+def extract_timeseries(wrf_path, start_date, end_date, res, sim_type, radius):
 
     run_Pmodel = False
     subday = ""
@@ -165,7 +165,6 @@ def extract_timeseries(wrf_path, start_date, end_date, res, sim_type):
         migli_path = "/scratch/c7071034/DATA/RECO_Migli"
         subday = "subdailyC3_"
 
-    radius = 30
     output_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
     d0X = "wrfout_d01"
     if res == "1km":
@@ -709,7 +708,7 @@ def extract_timeseries(wrf_path, start_date, end_date, res, sim_type):
     # Set the time as the index of the DataFrame
     df_out.index = [extract_datetime_from_filename(f) for f in file_list]
     # Optionally, save the DataFrame to CSV
-    output_filename = f"wrf_FLUXNET_sites_{res}{sim_type}_{start_date.split('_')[0]}_{end_date.split('_')[0]}.csv"
+    output_filename = f"wrf_FLUXNET_sites_{res}{sim_type}_{start_date.split('_')[0]}_{end_date.split('_')[0]}_r{radius}.csv"
 
     df_out.to_csv(
         os.path.join(
@@ -747,7 +746,7 @@ def extract_timeseries(wrf_path, start_date, end_date, res, sim_type):
     df_out_dist.to_csv(
         os.path.join(
             output_dir,
-            f"distances_{res}{sim_type}_{start_date.split('_')[0]}_{end_date.split('_')[0]}.csv",
+            f"distances_{res}{sim_type}_{start_date.split('_')[0]}_{end_date.split('_')[0]}_r{radius}.csv",
         )
     )
 
@@ -759,14 +758,14 @@ def main():
     if len(sys.argv) > 1:  # to run on cluster
         parser = argparse.ArgumentParser(description="Description of your script")
         parser.add_argument(
-            "-s", "--start", type=str, help="Format: 2012-07-01 01:00:00"
+            "-s", "--start", type=str, help="Format: 2012-01-01 01:00:00"
         )
-        parser.add_argument("-e", "--end", type=str, help="Format: 2012-07-01 01:00:00")
+        parser.add_argument("-e", "--end", type=str, help="Format: 2012-12-31 00:00:00")
         parser.add_argument(
             "-t",
             "--type",
             type=str,
-            help="Format: '', '_parm_err' or '_cloudy'",
+            help="Format: '' or '_cloudy'",
             default="",
         )
         args = parser.parse_args()
@@ -776,20 +775,20 @@ def main():
     else:  # to run locally
         start_date = "2012-01-01 00:00:00"
         end_date = "2012-12-31 00:00:00"
-        sim_type = "_pram_err"  # "", "_parm_err" or "_cloudy"
+        sim_type = ""  # "" or "_cloudy" - run one after the other
 
     wrf_paths = [
         f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_1km",
         # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_3km",
-        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_9km",
-        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_27km",
-        # f"/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS_54km",
     ]
+    radius = 10  # radius in which the best fitting locaiton is searched
+
     for wrf_path in wrf_paths:
         res = wrf_path.split("_")[-1]
         wrf_path = wrf_path + sim_type
         print((wrf_path, start_date, end_date, res, sim_type))
-        extract_timeseries(wrf_path, start_date, end_date, res, sim_type)
+        extract_timeseries(wrf_path, start_date, end_date, res, "", radius)
+        extract_timeseries(wrf_path, start_date, end_date, res, "_cloudy", radius)
 
 
 if __name__ == "__main__":

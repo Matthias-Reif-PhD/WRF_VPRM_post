@@ -423,10 +423,10 @@ def compute_hourly_means_and_differences_reshaped(
     for col in df_diffs.columns:
         diff_type, diff_res = col
         if diff_type == "ALPS_DIFF":
-            base_res = diff_res.split("-")[0]
+            base_res = diff_res.split("-")[1]
             ref_col = ("ALPS", base_res)
         elif diff_type == "REF_DIFF":
-            base_res = diff_res.split("-")[0]
+            base_res = diff_res.split("-")[1]
             ref_col = ("REF", base_res)
         else:
             continue
@@ -436,6 +436,101 @@ def compute_hourly_means_and_differences_reshaped(
             df_pct[pct_col] = (df_diffs[col] / df_means[ref_col]) * 100
 
     return df_means, df_diffs, df_pct
+
+
+def write_domain_average_table(
+    means,
+    diff_mean,
+    diff_pct,
+    outfile="domain_averaged_2012.tex",
+):
+    """
+    Write domain-averaged LaTeX table using dataframes.
+
+    Parameters:
+    -----------
+    means : DataFrame with MultiIndex columns (sim_type, resolution)
+    diff_mean : DataFrame with tuple columns
+    diff_pct : DataFrame with tuple columns
+    """
+    variables = [
+        ("T2", r"$T_\text{2m}$ [\textdegree C]"),
+        ("SWDOWN", r"S$\downarrow$ [W m$^{-2}$]"),
+        ("GPP", r"GPP [$\mu$mol m$^{-2}$ s$^{-1}$]"),
+        ("RECO", r"R$_{\text{eco}}$ [$\mu$mol m$^{-2}$ s$^{-1}$]"),
+        ("NEE", r"NEE [$\mu$mol m$^{-2}$ s$^{-1}$]"),
+    ]
+
+    def fmt(val):
+        return f"{val:.2f}"
+
+    with open(outfile, "w") as f:
+        f.write(
+            "\\begin{table}\n"
+            "\\centering\n"
+            "\\scriptsize\n"
+            "\\begin{tabular}{l|rr|rr|rr|r}\n"
+            "\\toprule\n"
+            "& \\multicolumn{2}{c|}{1km}"
+            " & \\multicolumn{2}{c|}{9km}"
+            " & \\multicolumn{2}{c|}{54km}"
+            " & CAMS \\\\\n"
+            "& ALPS & REF & ALPS & REF & ALPS & REF & \\\\\n"
+            "\\midrule\n"
+        )
+
+        for var, label in variables:
+            # Get 1km values from means
+            alps_1km = means.loc[var, ("ALPS", "1km")]
+            ref_1km = means.loc[var, ("REF", "1km")]
+
+            row = f"{label} & {fmt(alps_1km)}"
+
+            if var in ["GPP", "RECO", "NEE"]:
+                pct = abs(ref_1km) / abs(alps_1km) * 100
+                row += f" & {fmt(ref_1km)} [{pct:.0f}\\%]"
+            else:
+                row += f" & {fmt(ref_1km)}"
+
+            nee_diffs = []
+
+            # 9km and 54km columns
+            for res in ["9km", "54km"]:
+                for sim in ["ALPS", "REF"]:
+                    val = means.loc[var, (sim, res)]
+
+                    # Access using the tuple column directly
+                    dval = diff_mean.loc[var, (f"{sim}_DIFF", f"{res}-1km")]
+                    dpct = diff_pct.loc[var, (f"{sim}_DIFF_PCT", f"{res}-1km")]
+
+                    if var == "NEE":
+                        nee_diffs.append((res, sim, abs(dval), abs(dpct)))
+
+                    row += f" & {fmt(val)} ({fmt(dval)} [{abs(dpct):.0f}\\%])"
+
+            # CAMS column
+            cams_val = means.loc[var, ("ALPS", "CAMS")]
+            dval = diff_mean.loc[var, ("ALPS_DIFF", "CAMS-1km")]
+            dpct = diff_pct.loc[var, ("ALPS_DIFF_PCT", "CAMS-1km")]
+            row += f" & {fmt(cams_val)} ({fmt(dval)} [{abs(dpct):.0f}\\%]) \\\\\n"
+
+            # Apply bolding for NEE max differences
+            if var == "NEE" and nee_diffs:
+                max_abs = max(v[2] for v in nee_diffs)
+                max_pct = max(v[3] for v in nee_diffs)
+                # Find and bold the matching value
+                for res, sim, abs_val, pct_val in nee_diffs:
+                    if abs_val == max_abs and pct_val == max_pct:
+                        old_str = f"({fmt(abs_val)} [{pct_val:.0f}\\%])"
+                        new_str = f"\\textbf{{({fmt(abs_val)} [{pct_val:.0f}\\%])}}"
+                        row = row.replace(old_str, new_str, 1)
+                        break
+
+            f.write(row)
+
+        f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+    print(f"LaTeX table written to {outfile}")
 
 
 def main():
@@ -477,9 +572,16 @@ def main():
         hourly_avg, hourly_avg_ref, columns, resolutions, ref_sim
     )
 
-    df_means.to_csv(f"{outfolder}hourly_means_summary{sim_type}.csv")
-    df_diffs.to_csv(f"{outfolder}hourly_diff_means_summary{sim_type}.csv")
-    df_pct.to_csv(f"{outfolder}hourly_diff_percentage_summary{sim_type}.csv")
+    # Convert columns to proper MultiIndex
+    df_diffs.columns = pd.MultiIndex.from_tuples(df_diffs.columns)
+    df_pct.columns = pd.MultiIndex.from_tuples(df_pct.columns)
+
+    write_domain_average_table(
+        df_means,
+        df_diffs,
+        df_pct,
+        outfile=f"{outfolder}Table_1_domain_averaged_2012{sim_type}.tex",
+    )
 
     resolution_colors = {
         "1km": "black",

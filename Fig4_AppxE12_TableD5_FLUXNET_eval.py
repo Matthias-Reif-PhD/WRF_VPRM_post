@@ -196,7 +196,7 @@ def process_location(
             print(f"Skipping {location} for {fluxtype} due to empty FLUXNET data.")
             continue
 
-        plt.figure(figsize=(12, 7))
+        plt.figure(figsize=(10, 6))
         for resolution, df in dataframes.items():
             # build df_loc depending on fluxtype (kept logic identical)
             if fluxtype == "NEE_WRF":
@@ -413,14 +413,10 @@ def process_location(
         if unit == "[°C]":
             plt.ylabel(rf"{r_text} [°C]", fontsize=20)
         else:
-            plt.ylabel(rf"{r_text} [$\mu$mol m$^{-2}$ s$^{-1}$]", fontsize=20)
+            plt.ylabel(rf"{r_text} [$\mu$mol m⁻² s⁻¹]", fontsize=20)
         plt.tick_params(labelsize=20)
-        plt.legend(
-            loc="center",
-            bbox_to_anchor=(0.5, -0.25),
-            ncol=2,
-            fontsize=19,
-        )
+        plt.legend(loc="upper left", fontsize=17, frameon=True, framealpha=0.6)
+
         plt.xticks([0, 6, 12, 18, 24])
         plt.grid()
         plt.tight_layout()
@@ -444,13 +440,160 @@ def process_location(
     return consolidated_metrics_all
 
 
-# ---- Entrypoint / main (wraps original top-level logic) ----
+def write_latex_table_from_metrics(
+    consolidated_metrics_total,
+    model_lat_lon,
+    outfile="flux_evaluation_1km.tex",
+):
+    """
+    Write LaTeX table from consolidated_metrics_total and append
+    a row with column-wise averages across sites.
+
+    Assumes consolidated_metrics_total:
+    - rows: ["RMSE", "R2"]
+    - columns: <SITE>_<PARAM>_<FLUX>_<RES>
+    """
+
+    # ------------------------------------------------------------------
+    # Vegetation fraction lookup (dominant PFT fraction in %)
+    # ------------------------------------------------------------------
+    vegfrac_lookup = {}
+    for d in model_lat_lon:
+        site = d["name"].split("_")[0]
+        vegfrac_lookup[site] = int(round(d["veg_frac"] * 100))
+
+    # ------------------------------------------------------------------
+    # Site and PFT-type definition
+    # ------------------------------------------------------------------
+    sites = [
+        ("AT-Neu", "GRA"),
+        ("CH-Dav", "ENF"),
+        ("IT-Lav", "ENF"),
+        ("IT-MBo", "GRA"),
+        ("IT-Ren", "ENF"),
+    ]
+
+    fluxes = {
+        "NEE_WRF": "NEE",
+        "GPP_WRF": "GPP",
+        "RECO_WRF": r"R$_{eco}$",
+    }
+
+    params = ["SITE", "ALPS", "REF"]
+
+    def fmt(val, bold=False):
+        s = f"{val:.2f}"
+        return f"\\textbf{{{s}}}" if bold else s
+
+    # ------------------------------------------------------------------
+    # Accumulators for mean row
+    # ------------------------------------------------------------------
+    t2m_rmse_all = []
+    t2m_r2_all = []
+
+    flux_rmse_all = {flux: {p: [] for p in params} for flux in fluxes}
+    flux_r2_all = {flux: {p: [] for p in params} for flux in fluxes}
+
+    # ------------------------------------------------------------------
+    # Write table
+    # ------------------------------------------------------------------
+    with open(outfile, "w") as f:
+        f.write(
+            "\\begin{tabular}{ll|c|ccc|ccc|ccc}\n"
+            "\\hline\n"
+            "Site & PFT fraction & $T_\\text{2m}$ "
+            "& NEE SITE & NEE ALPS & NEE REF "
+            "& GPP SITE & GPP ALPS & GPP REF "
+            "& RECO SITE & RECO ALPS & RECO REF \\\\\n"
+            "\\hline\\hline\n"
+        )
+
+        # --------------------------------------------------------------
+        # Per-site rows
+        # --------------------------------------------------------------
+        for site, pft_type in sites:
+            veg_pct = vegfrac_lookup[site]
+            pft_str = f"{veg_pct}\\% {pft_type}"
+
+            # --- T2m (REF only)
+            col_t2m = f"{site}_REF_T2_WRF_1km"
+            t2m_rmse = consolidated_metrics_total.loc["RMSE", col_t2m]
+            t2m_r2 = consolidated_metrics_total.loc["R2", col_t2m]
+
+            t2m_rmse_all.append(t2m_rmse)
+            t2m_r2_all.append(t2m_r2)
+
+            row = f"{site} & {pft_str} & {t2m_rmse:.2f} ({t2m_r2:.2f})"
+
+            # --- Fluxes
+            for flux in fluxes:
+                rmse_vals = []
+                r2_vals = []
+
+                for p in params:
+                    col = f"{site}_{p}_{flux}_1km"
+                    rm = consolidated_metrics_total.loc["RMSE", col]
+                    r2v = consolidated_metrics_total.loc["R2", col]
+
+                    rmse_vals.append(rm)
+                    r2_vals.append(r2v)
+
+                    flux_rmse_all[flux][p].append(rm)
+                    flux_r2_all[flux][p].append(r2v)
+
+                rmse_min = min(rmse_vals)
+                r2_max = max(r2_vals)
+
+                for i, p in enumerate(params):
+                    rm = rmse_vals[i]
+                    r2v = r2_vals[i]
+                    rm_s = fmt(rm, rm == rmse_min)
+                    r2_s = fmt(r2v, r2v == r2_max)
+                    row += f" & {rm_s} ({r2_s})"
+
+            f.write(row + " \\\\\n")
+        f.write("\hline \n")
+
+        # --------------------------------------------------------------
+        # Mean row (across sites)
+        # --------------------------------------------------------------
+        # --- Determine extrema of mean values (for bolding)
+        t2m_rmse_mean = np.mean(t2m_rmse_all)
+        t2m_r2_mean = np.mean(t2m_r2_all)  # single column → no comparison
+
+        flux_rmse_mean = {
+            flux: {p: np.mean(flux_rmse_all[flux][p]) for p in params}
+            for flux in fluxes
+        }
+        flux_r2_mean = {
+            flux: {p: np.mean(flux_r2_all[flux][p]) for p in params} for flux in fluxes
+        }
+
+        row = "Mean & -- " f"& {t2m_rmse_mean:.2f} ({t2m_r2_mean:.2f})"
+
+        for flux in fluxes:
+            rmse_min = min(flux_rmse_mean[flux].values())
+            r2_max = max(flux_r2_mean[flux].values())
+
+            for p in params:
+                rm = flux_rmse_mean[flux][p]
+                r2v = flux_r2_mean[flux][p]
+                rm_s = fmt(rm, rm == rmse_min)
+                r2_s = fmt(r2v, r2v == r2_max)
+                row += f" & {rm_s} ({r2_s})"
+
+        f.write(row + " \\\\\n")
+
+        f.write("\\hline\n\\end{tabular}\n")
+
+    print(f"LaTeX table written to {outfile}")
 
 
 def main():
     # Parameters copied from original script
     timespan = "2012-01-01 00:00:00_2012-12-31 00:00:00"
     sim_type = "_all"
+    radius = 30
     csv_dir = "/scratch/c7071034/DATA/WRFOUT/csv"
     outfolder = "/home/c707/c7071034/Github/WRF_VPRM_post/plots"
     base_dir_FLX = "/scratch/c7071034/DATA/Fluxnet2015/Alps"
@@ -463,14 +606,15 @@ def main():
         r"[$\mu$mol m$^{-2}$ s$^{-1}$]",
     ]
     res_dx = "1km"
-    plot_CAMS = True
 
     # Find CSV files
     if sim_type == "_all":
-        csv_files = glob.glob(f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}*_{timespan}.csv")
+        csv_files = glob.glob(
+            f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}*_{timespan}_r{radius}.csv"
+        )
     else:
         csv_files = glob.glob(
-            f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}{sim_type}_{timespan}.csv"
+            f"{csv_dir}/wrf_FLUXNET_sites_{res_dx}{sim_type}_{timespan}_r{radius}.csv"
         )
 
     csv_files_sorted = sorted(
@@ -539,10 +683,12 @@ def main():
 
     # pft_site_match loading (kept identical)
     if sim_type == "_all":
-        pft_site_match = pd.read_csv(f"{csv_dir}/distances_{res_dx}_{timespan}.csv")
+        pft_site_match = pd.read_csv(
+            f"{csv_dir}/distances_{res_dx}_{timespan}_r{radius}.csv"
+        )
     else:
         pft_site_match = pd.read_csv(
-            f"{csv_dir}/distances_{res_dx}{sim_type}_{timespan}.csv"
+            f"{csv_dir}/distances_{res_dx}{sim_type}_{timespan}_r{radius}.csv"
         )
 
     model_lat_lon = []
@@ -607,7 +753,8 @@ def main():
         df_CAMS = df_CAMS[~df_CAMS.index.duplicated(keep="first")]
         df_CAMS_hourly = df_CAMS.resample("h").interpolate(method="linear")
         df_CAMS_hourly["t2m"] -= 273.15
-        df_CAMS_hourly_all[location_ll["name"]] = df_CAMS_hourly
+        colname = location_ll["name"].split("_")[:1]
+        df_CAMS_hourly_all[colname[0]] = df_CAMS_hourly
 
     # resolution colors
     resolution_colors = {
@@ -640,8 +787,13 @@ def main():
             [consolidated_metrics_total, consolidated_metrics_all], axis=1
         )
 
-    consolidated_metrics_total.to_csv(
-        f"{outfolder}/Validation_FLUXNET_hourly{sim_type}_{timespan}.csv"
+    # consolidated_metrics_total.to_csv(
+    #     f"{outfolder}/Validation_FLUXNET_hourly{sim_type}_{timespan}.csv"
+    # )
+    write_latex_table_from_metrics(
+        consolidated_metrics_total,
+        model_lat_lon,
+        outfile=f"{outfolder}/flux_evaluation_1km_r{radius}.tex",
     )
 
 

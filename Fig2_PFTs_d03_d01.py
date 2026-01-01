@@ -1123,14 +1123,21 @@ for index, site in df_sites_match.iterrows():
         colorx = "purple"
 
     # --- Plot Site Markers ---
-    """Black circle: observation site. Blue circle: matched model cell."""
+    """Red circle: observation site. Blue circle: matched model cell."""
+    ax.plot(
+        [site["lon"], site["model_lon"]],
+        [site["lat"], site["model_lat"]],
+        color="black",
+        linestyle="-",
+        linewidth=2,
+        transform=ccrs.PlateCarree(),
+    )
     ax.plot(
         site["lon"],
         site["lat"],
         marker="o",
-        color="black",
-        markersize=10,
-        linewidth=2,
+        color="red",
+        markersize=11,
         transform=ccrs.PlateCarree(),
     )
     ax.plot(
@@ -1138,17 +1145,7 @@ for index, site in df_sites_match.iterrows():
         site["model_lat"],
         marker="o",
         color="blue",
-        markersize=10,
-        linewidth=2,
-        transform=ccrs.PlateCarree(),
-    )
-    # add blue dashed lines to connect the site and model point
-    ax.plot(
-        [site["lon"], site["model_lon"]],
-        [site["lat"], site["model_lat"]],
-        color="blue",
-        linestyle="-",
-        linewidth=4,
+        markersize=9,
         transform=ccrs.PlateCarree(),
     )
 
