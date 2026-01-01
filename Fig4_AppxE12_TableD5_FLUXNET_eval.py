@@ -245,6 +245,7 @@ def process_location(
             elif fluxtype == "GPP_WRF":
                 df_loc = -df.filter(regex=f"^{location}_(.*_{fluxtype})$")
                 df_loc_pmodel = df.filter(regex=f"^{location}_(.*ALPS_GPP_Pmodel)$")
+                # (debug prints removed)
                 df_loc_pmodel = df_loc_pmodel.fillna(0)
                 df_loc = df_loc.add(df_loc_pmodel, fill_value=0)
             elif fluxtype == "RECO_WRF":
@@ -279,18 +280,35 @@ def process_location(
 
                     hourly_avg = df_loc.groupby("hour")[column].mean()
 
-                    # mask out nan values
+                    # mask out nan values and build obs/mod arrays
                     if df_loc[column].isna().any():
                         mask = ~df_loc[column].isna()
-                        clean_values_FLX = df_FLX_site[var_flx][mask.tolist()].tolist()
-                        clean_values_loc = df_loc[column][mask].tolist()
-                        evaluator = RegressionMetric(clean_values_FLX, clean_values_loc)
+                        obs = df_FLX_site[var_flx][mask.tolist()].to_numpy()
+                        mod = df_loc[column][mask].to_numpy()
                     else:
-                        evaluator = RegressionMetric(
-                            df_FLX_site[var_flx].tolist(), df_loc[column].tolist()
-                        )
+                        obs = df_FLX_site[var_flx].to_numpy()
+                        mod = df_loc[column].to_numpy()
 
-                    metrics = evaluator.get_metrics_by_list_names(["RMSE", "R2"])
+                    # Build evaluator from obs/mod
+                    evaluator = RegressionMetric(obs.tolist(), mod.tolist())
+
+                    # Retrieve standard metrics and add MAE
+                    metrics = evaluator.get_metrics_by_list_names(["RMSE", "R2", "MAE"])
+
+                    # Explicit bias/amplitude metrics
+                    diff = mod - obs
+                    metrics["MB"] = np.nanmean(diff)
+                    metrics["NMB"] = (
+                        np.nansum(diff) / np.nansum(obs)
+                        if np.nansum(obs) != 0
+                        else np.nan
+                    )
+                    metrics["STD_RATIO"] = (
+                        np.nanstd(mod) / np.nanstd(obs)
+                        if np.nanstd(obs) != 0
+                        else np.nan
+                    )
+
                     for metric, value in metrics.items():
                         consolidated_metrics_df.loc[
                             metric, column + "_" + resolution
@@ -302,6 +320,10 @@ def process_location(
                         par_plot_label = r"T$_\text{2m}$"
                         linestyle = "solid"
                     color_i = resolution_colors[resolution]
+                    print(
+                        f"CAMS metrics for {var_CAMS_plot}_{resolution}: ",
+                        {k: metrics[k] for k in metrics},
+                    )
                     if (
                         variable == "std_GPP_Pmodel"
                         or variable == "std_RECO_Migli"
@@ -347,8 +369,23 @@ def process_location(
             df_merged[cols_to_fix] = df_merged[cols_to_fix].interpolate(method="linear")
 
             cams_l = df_merged[var_CAMS_plot]
-            evaluator = RegressionMetric(df_FLX_site[var_flx].tolist(), cams_l.tolist())
-            metrics = evaluator.get_metrics_by_list_names(["RMSE", "R2"])
+            # build obs/mod arrays for CAMS comparison
+            obs_cams = df_FLX_site[var_flx].to_numpy()
+            mod_cams = cams_l.to_numpy()
+            evaluator = RegressionMetric(obs_cams.tolist(), mod_cams.tolist())
+            metrics = evaluator.get_metrics_by_list_names(["RMSE", "R2", "MAE"])
+            diff_cams = mod_cams - obs_cams
+            metrics["MB"] = np.nanmean(diff_cams)
+            metrics["NMB"] = (
+                np.nansum(diff_cams) / np.nansum(obs_cams)
+                if np.nansum(obs_cams) != 0
+                else np.nan
+            )
+            metrics["STD_RATIO"] = (
+                np.nanstd(mod_cams) / np.nanstd(obs_cams)
+                if np.nanstd(obs_cams) != 0
+                else np.nan
+            )
             for metric, value in metrics.items():
                 consolidated_metrics_df.loc[
                     metric, var_CAMS_plot + "_" + resolution
@@ -378,10 +415,28 @@ def process_location(
                 )
 
                 cams_bfas = df_merged[var_CAMS_plot + "_bfas"]
-                evaluator_bfas = RegressionMetric(
-                    df_FLX_site[var_flx].tolist(), cams_bfas.tolist()
+                obs_bfas = df_FLX_site[var_flx].to_numpy()
+                mod_bfas = cams_bfas.to_numpy()
+                evaluator_bfas = RegressionMetric(obs_bfas.tolist(), mod_bfas.tolist())
+                metrics_bfas = evaluator_bfas.get_metrics_by_list_names(
+                    ["RMSE", "R2", "MAE"]
                 )
-                metrics_bfas = evaluator_bfas.get_metrics_by_list_names(["RMSE", "R2"])
+                diff_bfas = mod_bfas - obs_bfas
+                metrics_bfas["MB"] = np.nanmean(diff_bfas)
+                metrics_bfas["NMB"] = (
+                    np.nansum(diff_bfas) / np.nansum(obs_bfas)
+                    if np.nansum(obs_bfas) != 0
+                    else np.nan
+                )
+                metrics_bfas["STD_RATIO"] = (
+                    np.nanstd(mod_bfas) / np.nanstd(obs_bfas)
+                    if np.nanstd(obs_bfas) != 0
+                    else np.nan
+                )
+                print(
+                    f"CAMS BFAS metrics for {var_CAMS_plot}_bfas_{resolution}: ",
+                    {k: metrics_bfas[k] for k in metrics_bfas},
+                )
                 hourly_avg_CAMS_bfas = df_CAMS_hourly.groupby("hour")[
                     var_CAMS_plot + "_bfas"
                 ].mean()
@@ -448,14 +503,14 @@ def write_latex_table_from_metrics(
     """
     Write LaTeX table from consolidated_metrics_total and append
     a row with column-wise averages across sites.
-
+            "\\hline\\hline\n"
     Assumes consolidated_metrics_total:
     - rows: ["RMSE", "R2"]
     - columns: <SITE>_<PARAM>_<FLUX>_<RES>
     """
 
     # ------------------------------------------------------------------
-    # Vegetation fraction lookup (dominant PFT fraction in %)
+
     # ------------------------------------------------------------------
     vegfrac_lookup = {}
     for d in model_lat_lon:
@@ -486,13 +541,15 @@ def write_latex_table_from_metrics(
         return f"\\textbf{{{s}}}" if bold else s
 
     # ------------------------------------------------------------------
-    # Accumulators for mean row
+    # Accumulators for mean row (include MAE)
     # ------------------------------------------------------------------
     t2m_rmse_all = []
     t2m_r2_all = []
+    t2m_mae_all = []
 
     flux_rmse_all = {flux: {p: [] for p in params} for flux in fluxes}
     flux_r2_all = {flux: {p: [] for p in params} for flux in fluxes}
+    flux_mae_all = {flux: {p: [] for p in params} for flux in fluxes}
 
     # ------------------------------------------------------------------
     # Write table
@@ -515,14 +572,17 @@ def write_latex_table_from_metrics(
             veg_pct = vegfrac_lookup[site]
             pft_str = f"{veg_pct}\\% {pft_type}"
 
-            # --- T2m (REF only)
+            # --- T2m (REF only) + MAE
             col_t2m = f"{site}_REF_T2_WRF_1km"
             t2m_rmse = consolidated_metrics_total.loc["RMSE", col_t2m]
             t2m_r2 = consolidated_metrics_total.loc["R2", col_t2m]
+            t2m_mae = consolidated_metrics_total.loc["MAE", col_t2m]
 
             t2m_rmse_all.append(t2m_rmse)
             t2m_r2_all.append(t2m_r2)
+            t2m_mae_all.append(t2m_mae)
 
+            # display RMSE (R2) only — MAE kept in calculations but not shown
             row = f"{site} & {pft_str} & {t2m_rmse:.2f} ({t2m_r2:.2f})"
 
             # --- Fluxes
@@ -534,12 +594,14 @@ def write_latex_table_from_metrics(
                     col = f"{site}_{p}_{flux}_1km"
                     rm = consolidated_metrics_total.loc["RMSE", col]
                     r2v = consolidated_metrics_total.loc["R2", col]
+                    mae = consolidated_metrics_total.loc["MAE", col]
 
                     rmse_vals.append(rm)
                     r2_vals.append(r2v)
 
                     flux_rmse_all[flux][p].append(rm)
                     flux_r2_all[flux][p].append(r2v)
+                    flux_mae_all[flux][p].append(mae)
 
                 rmse_min = min(rmse_vals)
                 r2_max = max(r2_vals)
@@ -549,6 +611,7 @@ def write_latex_table_from_metrics(
                     r2v = r2_vals[i]
                     rm_s = fmt(rm, rm == rmse_min)
                     r2_s = fmt(r2v, r2v == r2_max)
+                    # show RMSE (R2) only
                     row += f" & {rm_s} ({r2_s})"
 
             f.write(row + " \\\\\n")
@@ -560,6 +623,7 @@ def write_latex_table_from_metrics(
         # --- Determine extrema of mean values (for bolding)
         t2m_rmse_mean = np.mean(t2m_rmse_all)
         t2m_r2_mean = np.mean(t2m_r2_all)  # single column → no comparison
+        t2m_mae_mean = np.mean(t2m_mae_all)
 
         flux_rmse_mean = {
             flux: {p: np.mean(flux_rmse_all[flux][p]) for p in params}
@@ -567,6 +631,9 @@ def write_latex_table_from_metrics(
         }
         flux_r2_mean = {
             flux: {p: np.mean(flux_r2_all[flux][p]) for p in params} for flux in fluxes
+        }
+        flux_mae_mean = {
+            flux: {p: np.mean(flux_mae_all[flux][p]) for p in params} for flux in fluxes
         }
 
         row = "Mean & -- " f"& {t2m_rmse_mean:.2f} ({t2m_r2_mean:.2f})"
@@ -583,10 +650,159 @@ def write_latex_table_from_metrics(
                 row += f" & {rm_s} ({r2_s})"
 
         f.write(row + " \\\\\n")
-
         f.write("\\hline\n\\end{tabular}\n")
 
     print(f"LaTeX table written to {outfile}")
+
+
+def write_latex_table_from_metrics_bias(
+    consolidated_metrics_total,
+    model_lat_lon,
+    outfile="flux_evaluation_1km_bias.tex",
+):
+    """
+    Write LaTeX table summarising bias metrics per site.
+
+    Each cell formatted as: MB (NMB) [STD_RATIO]
+    """
+
+    vegfrac_lookup = {}
+    for d in model_lat_lon:
+        site = d["name"].split("_")[0]
+        vegfrac_lookup[site] = int(round(d["veg_frac"] * 100))
+
+    sites = [
+        ("AT-Neu", "GRA"),
+        ("CH-Dav", "ENF"),
+        ("IT-Lav", "ENF"),
+        ("IT-MBo", "GRA"),
+        ("IT-Ren", "ENF"),
+    ]
+
+    fluxes = {
+        "NEE_WRF": "NEE",
+        "GPP_WRF": "GPP",
+        "RECO_WRF": r"R$_{eco}$",
+    }
+
+    params = ["SITE", "ALPS", "REF"]
+
+    def fmt(val, bold=False):
+        s = f"{val:.2f}"
+        return f"\\textbf{{{s}}}" if bold else s
+
+    # Build bias table: show NMB (STD_RATIO). Also compute mean row and bold best values
+    with open(outfile, "w") as f:
+        f.write(
+            "\\begin{tabular}{ll|c|ccc|ccc|ccc}\n"
+            "\\hline\n"
+            "Site & PFT fraction & $T_\\text{2m}$ "
+            "& NEE SITE & NEE ALPS & NEE REF "
+            "& GPP SITE & GPP ALPS & GPP REF "
+            "& RECO SITE & RECO ALPS & RECO REF \\\\\n"
+            "\\hline\\hline\n"
+        )
+
+        # accumulators to compute mean across sites (store MB, NMB, STD)
+        mean_vals = {"T2": {"MB": [], "NMB": [], "STD": []}}
+        for flux in fluxes:
+            mean_vals[flux] = {p: {"MB": [], "NMB": [], "STD": []} for p in params}
+
+        # per-site rows
+        for site, pft_type in sites:
+            veg_pct = vegfrac_lookup[site]
+            pft_str = f"{veg_pct}\\% {pft_type}"
+
+            # T2m: include MB, NMB and STD_RATIO
+            col_t2m = f"{site}_REF_T2_WRF_1km"
+            mb_t2m = consolidated_metrics_total.loc["MB", col_t2m]
+            nmb_t2m = consolidated_metrics_total.loc["NMB", col_t2m]
+            std_t2m = consolidated_metrics_total.loc["STD_RATIO", col_t2m]
+            mean_vals["T2"]["MB"].append(mb_t2m)
+            mean_vals["T2"]["NMB"].append(nmb_t2m)
+            mean_vals["T2"]["STD"].append(std_t2m)
+
+            row = f"{site} & {pft_str} & {mb_t2m:.2f} ({nmb_t2m:.2f}) [{std_t2m:.2f}]"
+
+            # For each flux, collect values for this site, determine best among params and format
+            for flux in fluxes:
+                mb_list = []
+                nmb_list = []
+                std_list = []
+                for p in params:
+                    col = f"{site}_{p}_{flux}_1km"
+                    mb = consolidated_metrics_total.loc["MB", col]
+                    nmb = consolidated_metrics_total.loc["NMB", col]
+                    stdr = consolidated_metrics_total.loc["STD_RATIO", col]
+                    mb_list.append(mb)
+                    nmb_list.append(nmb)
+                    std_list.append(stdr)
+                    # store for mean computation
+                    mean_vals[flux][p]["MB"].append(mb)
+                    mean_vals[flux][p]["NMB"].append(nmb)
+                    mean_vals[flux][p]["STD"].append(stdr)
+
+                # determine best indices: NMB closest to zero, STD closest to 1
+                nmb_best_idx = (
+                    int(np.nanargmin(np.abs(np.array(nmb_list))))
+                    if len(nmb_list) > 0
+                    else 0
+                )
+                std_best_idx = (
+                    int(np.nanargmin(np.abs(np.array(std_list) - 1.0)))
+                    if len(std_list) > 0
+                    else 0
+                )
+
+                # format each param value: MB (NMB) [STD], bold NMB/STD if best
+                for i, (mb_val, nmb_val, std_val) in enumerate(
+                    zip(mb_list, nmb_list, std_list)
+                ):
+                    nmb_s = fmt(nmb_val, bold=(i == nmb_best_idx))
+                    std_s = fmt(std_val, bold=(i == std_best_idx))
+                    mb_s = f"{mb_val:.2f}"
+                    row += f" & {mb_s} ({nmb_s}) [{std_s}]"
+
+            f.write(row + " \\\\\n")
+
+        # Mean row across sites
+        f.write("\\hline\n")
+        mean_row = "Mean & -- "
+        # mean for T2m (MB (NMB) [STD])
+        mean_mb_t2 = (
+            np.mean(mean_vals["T2"]["MB"]) if len(mean_vals["T2"]["MB"]) > 0 else np.nan
+        )
+        mean_nmb_t2 = (
+            np.mean(mean_vals["T2"]["NMB"])
+            if len(mean_vals["T2"]["NMB"]) > 0
+            else np.nan
+        )
+        mean_std_t2 = (
+            np.mean(mean_vals["T2"]["STD"])
+            if len(mean_vals["T2"]["STD"]) > 0
+            else np.nan
+        )
+        mean_row += f"& {mean_mb_t2:.2f} ({mean_nmb_t2:.2f}) [{mean_std_t2:.2f}]"
+
+        # for each flux compute mean per param and bold best among params (NMB closest to zero, STD closest to 1)
+        for flux in fluxes:
+            # compute mean arrays per param
+            mb_means = [np.mean(mean_vals[flux][p]["MB"]) for p in params]
+            nmb_means = [np.mean(mean_vals[flux][p]["NMB"]) for p in params]
+            std_means = [np.mean(mean_vals[flux][p]["STD"]) for p in params]
+            # best indices
+            nmb_best_idx = int(np.nanargmin(np.abs(np.array(nmb_means))))
+            std_best_idx = int(np.nanargmin(np.abs(np.array(std_means) - 1.0)))
+            for i, p in enumerate(params):
+                nmb_s = fmt(nmb_means[i], bold=(i == nmb_best_idx))
+                std_s = fmt(std_means[i], bold=(i == std_best_idx))
+                mb_s = f"{mb_means[i]:.2f}"
+                mean_row += f" & {mb_s} ({nmb_s}) [{std_s}]"
+
+        f.write(mean_row + " \\\\\n")
+        f.write("\\hline\n\\end{tabular}\n")
+
+    print(f"LaTeX bias table written to {outfile}")
 
 
 def main():
@@ -794,6 +1010,12 @@ def main():
         consolidated_metrics_total,
         model_lat_lon,
         outfile=f"{outfolder}/flux_evaluation_1km_r{radius}.tex",
+    )
+    # Also write bias table (MB (NMB) [STD_RATIO])
+    write_latex_table_from_metrics_bias(
+        consolidated_metrics_total,
+        model_lat_lon,
+        outfile=f"{outfolder}/flux_evaluation_1km_bias_r{radius}.tex",
     )
 
 
