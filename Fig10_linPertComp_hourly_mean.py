@@ -25,7 +25,7 @@ start_date = "2012-01-01 00:00:00"
 end_date = "2012-12-31 00:00:00"
 wrf_basepath = "/scratch/c7071034/DATA/WRFOUT/WRFOUT_ALPS"  # without resolution suffix
 dx_all = ["_54km", "_9km"]  # "_54km",
-sim_type = ""  # "", "_cloudy"
+sim_type = "_cloudy"  # "", "_cloudy"
 plots_folder = (
     f"/home/c707/c7071034/Github/WRF_VPRM_post/plots/components{sim_type}_L2_"
 )
@@ -1018,13 +1018,14 @@ for dx in dx_all:
             [f"{i}" for i in range(len(lin_pert_mean_diffs_df_hour.index))]
         )
         plt.tick_params(labelsize=18)
-        ax.legend(
-            driver_names_plot + ["Residual"],
-            loc="upper left",
-            fontsize=20,
-            frameon=True,
-            framealpha=0.4,
-        )
+        if dx == "_54km" and sim_type == "":
+            ax.legend(
+                driver_names_plot + ["Residual"],
+                loc="upper left",
+                fontsize=20,
+                frameon=True,
+                framealpha=0.4,
+            )
         ax.grid(True)
         # ax.set_ylim(-1.2, 0.6)
         plt.tight_layout()

@@ -216,7 +216,7 @@ def plot_topography(ax, lon, lat, hgt, add_colorbar=False):
 
     if add_colorbar:
         cb = plt.colorbar(cf, ax=ax, orientation="vertical", pad=0.01, shrink=0.4)
-        cb.set_label("[m]", fontsize=FONTSIZE_LEGEND)
+        cb.set_label("[m AMSL]", fontsize=FONTSIZE_LEGEND)
         cb.ax.tick_params(labelsize=FONTSIZE_LEGEND)
 
     return cf

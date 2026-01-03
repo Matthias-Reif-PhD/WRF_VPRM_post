@@ -765,9 +765,8 @@ def write_latex_table_from_metrics_bias(
             mae_best_idx = int(np.nanargmin(np.abs(np.array(mae_means))))
             # format
             for i, p in enumerate(params):
-                mb_s = fmt(mae_means[i], bold=(i == mb_best_idx))
+                mb_s = fmt(mb_means[i], bold=(i == mb_best_idx))
                 mae_s = fmt(mae_means[i], bold=(i == mae_best_idx))
-                mb_s = f"{mb_means[i]:.2f}"
                 mean_row += f" & {mb_s} ({mae_s})"
 
         f.write(mean_row + " \\\\\n")
