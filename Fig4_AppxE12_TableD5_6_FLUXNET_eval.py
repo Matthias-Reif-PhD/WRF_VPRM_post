@@ -89,7 +89,7 @@ def read_FLUXNET_site(start_date, end_date, location, base_dir, var_flx):
     ]
 
     if df_FLX_site.empty:
-        print("No data in the specified date range.")
+        print(f"No data in the specified date range for {var_flx} in {location}.")
         return pd.DataFrame()
 
     # Select relevant columns and clean
@@ -639,6 +639,124 @@ def write_latex_table_from_metrics(
     print(f"LaTeX table written to {outfile}")
 
 
+def compute_fluxnet_site_means(
+    locations, start_date_2012, end_date_2012, base_dir_FLX, df_example
+):
+    """
+    Compute mean values for FLUXNET variables per location.
+
+    Returns DataFrame with columns for yearly means and _WRFmatch means
+    (filtered to only timestamps in df_example). Includes a 'Mean' row with averages across sites.
+    """
+    var_flx_list = [
+        "TA_F",
+        "SW_IN_F",
+        "GPP_NT_VUT_USTAR50",
+        "RECO_NT_VUT_USTAR50",
+        "NEE_VUT_USTAR50",
+    ]
+    # Create columns for both yearly and WRF-matched values
+    all_columns = var_flx_list + [f"{var}_WRFmatch" for var in var_flx_list]
+    df_FLX_site_means = pd.DataFrame(
+        index=list(locations) + ["Mean"], columns=all_columns
+    )
+
+    for location in locations:
+        for var_flx in var_flx_list:
+            df_FLX_site = read_FLUXNET_site(
+                start_date_2012, end_date_2012, location, base_dir_FLX, var_flx
+            )
+            if not df_FLX_site.empty and var_flx in df_FLX_site.columns:
+                df_FLX_site_means.loc[location, var_flx] = df_FLX_site[var_flx].mean()
+            else:
+                df_FLX_site_means.loc[location, var_flx] = np.nan
+
+            if not df_FLX_site.empty and var_flx in df_FLX_site.columns:
+                # Set TIMESTAMP_START as index and ensure timezone-naive for comparison
+                df_FLX_site.set_index("TIMESTAMP_START", inplace=True)
+                df_FLX_site.index = df_FLX_site.index.tz_localize(None)
+                # Filter to only timesteps that are in df_example (also needs to be timezone-naive)
+                df_example_index_naive = df_example.index.tz_localize(None)
+                df_FLX_site_filtered = df_FLX_site[
+                    df_FLX_site.index.isin(df_example_index_naive)
+                ]
+                if not df_FLX_site_filtered.empty:
+                    df_FLX_site_means.loc[location, f"{var_flx}_WRFmatch"] = (
+                        df_FLX_site_filtered[var_flx].mean()
+                    )
+                else:
+                    df_FLX_site_means.loc[location, f"{var_flx}_WRFmatch"] = np.nan
+            else:
+                df_FLX_site_means.loc[location, f"{var_flx}_WRFmatch"] = np.nan
+
+    # Compute mean row across all sites (only for the locations, not including Mean row itself)
+    locations_list = [loc for loc in df_FLX_site_means.index if loc != "Mean"]
+    for col in all_columns:
+        df_FLX_site_means.loc["Mean", col] = (
+            df_FLX_site_means.loc[locations_list, col].astype(float).mean()
+        )
+
+    return df_FLX_site_means
+
+
+def write_latex_table_fluxnet_means(
+    df_FLX_site_means, outfile="fluxnet_site_means.tex"
+):
+    """
+    Write LaTeX table with FLUXNET site mean values.
+
+    Format: yearly_mean [WRFmatch_mean]
+    """
+    var_flx_list = [
+        "TA_F",
+        "SW_IN_F",
+        "GPP_NT_VUT_USTAR50",
+        "RECO_NT_VUT_USTAR50",
+        "NEE_VUT_USTAR50",
+    ]
+    var_names = [
+        r"T$_\text{2m}$ [°C]",
+        r"SW$_\text{in}$ [W m$^{-2}$]",
+        r"GPP [$\mu$mol m$^{-2}$ s$^{-1}$]",
+        r"R$_\text{eco}$ [$\mu$mol m$^{-2}$ s$^{-1}$]",
+        r"NEE [$\mu$mol m$^{-2}$ s$^{-1}$]",
+    ]
+
+    with open(outfile, "w") as f:
+        f.write(
+            "\\begin{tabular}{l|" + "c" * len(var_names) + "}\n"
+            "\\hline\n"
+            "Site & " + " & ".join(var_names) + " \\\\\n"
+            "\\hline\\hline\n"
+        )
+
+        for site in df_FLX_site_means.index:
+            if site == "Mean":
+                f.write("\\hline\n")  # Add horizontal line before mean row
+
+            row = f"{site}"
+
+            # Add variable values
+            for var_flx in var_flx_list:
+                yearly_val = df_FLX_site_means.loc[site, var_flx]
+                wrf_match_val = df_FLX_site_means.loc[site, f"{var_flx}_WRFmatch"]
+
+                if pd.isna(yearly_val):
+                    cell_str = "--"
+                else:
+                    cell_str = f"{yearly_val:.2f}"
+                    if not pd.isna(wrf_match_val):
+                        cell_str += f" ({wrf_match_val:.2f})"
+
+                row += f" & {cell_str}"
+
+            f.write(row + " \\\\\n")
+
+        f.write("\\hline\n\\end{tabular}\n")
+
+    print(f"LaTeX FLUXNET means table written to {outfile}")
+
+
 def write_latex_table_from_metrics_bias(
     consolidated_metrics_total,
     model_lat_lon,
@@ -867,6 +985,41 @@ def main():
             "IT-Tor": 2160,
         }
 
+    locations_d03 = [
+        "IT-Tor",
+        "IT-Lav",
+        "AT-Neu",
+        "CH-Cha",
+        "CH-Dav",
+        "CH-Fru",
+        "CH-Lae",
+        "CH-Oe1",
+        "CH-Oe2",
+        "DE-Lkb",
+        "IT-Isp",
+        "IT-La2",
+        "IT-MBo",
+        "IT-PT1",
+        "IT-Ren",
+        "DE-Hai",
+        "DE-Kli",
+        "FR-Fon",
+        "FR-Gri",
+    ]
+
+    # Get average values of each location for the entire year and WRF-matched timesteps
+    start_date_2012 = pd.Timestamp(timespan.split("_")[0]) - pd.Timedelta(hours=1)
+    end_date_2012 = pd.Timestamp(timespan.split("_")[1]) - pd.Timedelta(hours=1)
+
+    df_FLX_site_means = compute_fluxnet_site_means(
+        locations_d03, start_date_2012, end_date_2012, base_dir_FLX, df_example
+    )
+    # Write FLUXNET site means table
+    write_latex_table_fluxnet_means(
+        df_FLX_site_means,
+        outfile=f"{outfolder}/fluxnet_site_means_r{radius}.tex",
+    )
+
     # pft_site_match loading (kept identical)
     if sim_type == "_all":
         pft_site_match = pd.read_csv(
@@ -973,9 +1126,6 @@ def main():
             [consolidated_metrics_total, consolidated_metrics_all], axis=1
         )
 
-    # consolidated_metrics_total.to_csv(
-    #     f"{outfolder}/Validation_FLUXNET_hourly{sim_type}_{timespan}.csv"
-    # )
     write_latex_table_from_metrics(
         consolidated_metrics_total,
         model_lat_lon,
@@ -987,6 +1137,8 @@ def main():
         model_lat_lon,
         outfile=f"{outfolder}/flux_evaluation_1km_bias_r{radius}.tex",
     )
+
+    print("All done.")
 
 
 if __name__ == "__main__":
